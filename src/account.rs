@@ -1,17 +1,27 @@
 use std::collections::HashMap;
+use std::process::Command;
 use scrypto::math::Decimal;
 use regex::Regex;
 use lazy_static::lazy_static;
+use crate::utils::run_command;
 
-struct Account{
+pub(crate) struct Account{
     address: String,
     public_key: String,
     private_key: String,
-    assets: HashMap<String, Decimal>
+    resources: HashMap<String, Decimal>
 }
 
 impl Account
 {
+
+    pub fn new() -> Account
+    {
+        let account_command = run_command(Command::new("resim")
+            .arg("new-account"));
+        Self::from(&account_command)
+    }
+
     pub fn from(string_with_info: &str) -> Account
     {
         lazy_static! {
@@ -28,11 +38,11 @@ impl Account
             address: String::from(address),
             public_key: String::from(public_key),
             private_key: String::from(private_key),
-            assets: HashMap::new()
+            resources: HashMap::new()
         }
     }
 
-    pub fn update_assets_from(&mut self, string_with_info: &str)
+    pub fn update_resources_from(&mut self, string_with_info: &str)
     {
         // Resource line is of the form
         // amount: 1000, resource address: resource_sim1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqzqu57yag, name: "Radix", symbol: "XRD"
@@ -44,16 +54,36 @@ impl Account
         {
             let amount = Decimal::from(&cap[1]);
             let address = &cap[2];
-            self.update_asset(address, amount);
+            self.update_resource(address, amount);
         }
     }
 
-    pub fn update_asset(&mut self, resource_address: &str, new_amount: Decimal)
+    pub fn update_resource(&mut self, resource_address: &str, new_amount: Decimal)
     {
-        match self.assets.get_mut(resource_address)
+        match self.resources.get_mut(resource_address)
         {
-            None => { self.assets.insert(String::from(resource_address), new_amount); }
+            None => { self.resources.insert(String::from(resource_address), new_amount); }
             Some(amount) => { *amount = new_amount; }
+        }
+    }
+
+    pub fn update_resources(&mut self)
+    {
+        let info = run_command(Command::new("resim")
+            .arg("show")
+            .arg(&self.address));
+
+        // Resource line is of the form
+        // amount: 1000, resource address: resource_sim1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqzqu57yag, name: "Radix", symbol: "XRD"
+        lazy_static! {
+            static ref RESOURCE_RE: Regex = Regex::new(r#".─ \{ amount: ([\d.]*), resource address: (\w*),"#).unwrap();
+        }
+
+        for cap in RESOURCE_RE.captures_iter(&info)
+        {
+            let amount = Decimal::from(&cap[1]);
+            let address = &cap[2];
+            self.update_resource(address, amount);
         }
     }
 
@@ -71,7 +101,7 @@ impl Account
 
     pub fn amount_owned(&self, resource: String) -> Decimal
     {
-        match self.assets.get(&resource)
+        match self.resources.get(&resource)
         {
             None => { Decimal::zero() }
             Some(amount) => { *amount }
@@ -122,11 +152,11 @@ mod tests
             address: "".to_string(),
             public_key: "".to_string(),
             private_key: "".to_string(),
-            assets: HashMap::new()
+            resources: HashMap::new()
         };
 
-        account.update_assets_from(resim_output);
-        assert_eq!(*account.assets.get("resource_sim1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqzqu57yag").unwrap(), dec!(1000));
+        account.update_resources_from(resim_output);
+        assert_eq!(*account.resources.get("resource_sim1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqzqu57yag").unwrap(), dec!(1000));
     }
 
     #[test]
@@ -149,12 +179,12 @@ mod tests
             address: "".to_string(),
             public_key: "".to_string(),
             private_key: "".to_string(),
-            assets: HashMap::new()
+            resources: HashMap::new()
         };
 
-        account.update_assets_from(resim_output);
-        assert_eq!(*account.assets.get("resource_sim1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqzqu57yag").unwrap(), dec!(1000));
-        assert_eq!(*account.assets.get("resource_sim1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqzqu57pol").unwrap(), dec!(123));
+        account.update_resources_from(resim_output);
+        assert_eq!(*account.resources.get("resource_sim1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqzqu57yag").unwrap(), dec!(1000));
+        assert_eq!(*account.resources.get("resource_sim1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqzqu57pol").unwrap(), dec!(123));
     }
 
     #[test]
@@ -177,12 +207,12 @@ mod tests
             address: "".to_string(),
             public_key: "".to_string(),
             private_key: "".to_string(),
-            assets: HashMap::new()
+            resources: HashMap::new()
         };
-        account.update_asset("resource_sim1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqzqu57yag", dec!(100));
-        assert_eq!(*account.assets.get("resource_sim1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqzqu57yag").unwrap(), dec!(100));
+        account.update_resource("resource_sim1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqzqu57yag", dec!(100));
+        assert_eq!(*account.resources.get("resource_sim1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqzqu57yag").unwrap(), dec!(100));
 
-        account.update_assets_from(resim_output);
-        assert_eq!(*account.assets.get("resource_sim1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqzqu57yag").unwrap(), dec!(1000))
+        account.update_resources_from(resim_output);
+        assert_eq!(*account.resources.get("resource_sim1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqzqu57yag").unwrap(), dec!(1000))
     }
 }

@@ -3,7 +3,8 @@ use scrypto::prelude::*;
 blueprint! {
     struct Hello {
         // Define what resources and data will be managed by Hello components
-        sample_vault: Vault
+        sample_vault: Vault,
+        other_vault: Vault
     }
 
     impl Hello {
@@ -17,9 +18,15 @@ blueprint! {
                 .metadata("symbol", "HT")
                 .initial_supply(1000);
 
+            let other_bucket: Bucket = ResourceBuilder::new_fungible()
+                .metadata("name", "TEST")
+                .metadata("symbol", "TST")
+                .initial_supply(9);
+
             // Instantiate a Hello component, populating its vault with our supply of 1000 HelloToken
             Self {
-                sample_vault: Vault::with_bucket(my_bucket)
+                sample_vault: Vault::with_bucket(my_bucket),
+                other_vault: Vault::with_bucket(other_bucket)
             }
             .instantiate()
             .globalize()

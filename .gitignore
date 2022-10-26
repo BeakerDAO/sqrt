@@ -15,3 +15,5 @@ Cargo.lock
 /target
 /tests/assets/hello-token/target/
 /tests/assets/hello-token/Cargo.lock
+/tests/assets/gumball-machine/target/
+/tests/assets/gumball-machine/Cargo.lock

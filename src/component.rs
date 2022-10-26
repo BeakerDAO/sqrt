@@ -8,20 +8,16 @@ use crate::utils::run_command;
 pub struct Component
 {
     address: String,
-    package_address: String,
-    blueprint_name: String,
     resources: HashMap<String, Decimal>,
 }
 
 impl Component
 {
-    pub fn from(address: &str, package_address: &str, blueprint_name: &str) -> Component
+    pub fn from(address: &str) -> Component
     {
         let mut comp = Component
         {
             address: String::from(address),
-            package_address: String::from(package_address),
-            blueprint_name: String::from(blueprint_name),
             resources: HashMap::new()
         };
         comp.update_resources();
@@ -58,11 +54,7 @@ impl Component
 
     }
 
-
     pub fn address(&self) -> &str {
         &self.address
-    }
-    pub fn package_address(&self) -> &str {
-        &self.package_address
     }
 }

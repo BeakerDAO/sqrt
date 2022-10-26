@@ -6,6 +6,7 @@ pub mod test_environment;
 mod utils;
 pub mod blueprint;
 pub mod package;
+pub mod method;
 
 const RADIX_TOKEN: &str = "resource_sim1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqzqu57yag";
 

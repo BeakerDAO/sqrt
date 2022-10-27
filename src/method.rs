@@ -14,24 +14,24 @@ pub trait Method
     fn name(&self) -> &str;
 
     /// Returns the arguments of the blueprint method
-    fn args(&self) -> Option<Vec<Args>>;
+    fn args(&self) -> Option<Vec<Arg>>;
 
 }
 
-pub enum Args
+pub enum Arg
 {
     /// Bucket with resource to send. The String represents the name of the resource and the Decimal the amount to send
     Bucket(String, Decimal),
     Other(String)
 }
 
-impl Args
+impl Arg
 {
     pub fn take_resource<'a>(&'a self, manifest: &'a mut ManifestBuilder, account: ComponentAddress, tokens: &HashMap<String,String>, buckets: &mut Vec<BucketId>) -> &mut ManifestBuilder
     {
         match self
         {
-            Args::Bucket(address, amount) =>
+            Arg::Bucket(address, amount) =>
                 {
                     let token_str = tokens.get(address)
                         .expect(&format!("Could not find token {} in the list of tokens", address));
@@ -50,7 +50,7 @@ impl Args
 
                     final_manifest
                 }
-            Args::Other(_) => { manifest }
+            Arg::Other(_) => { manifest }
         }
     }
 
@@ -58,7 +58,7 @@ impl Args
     {
         match self
         {
-            Args::Bucket(_, _) =>
+            Arg::Bucket(_, _) =>
                 {
                     let id = if buckets.is_empty()
                     {
@@ -71,11 +71,23 @@ impl Args
                     let mut encoded = scrypto::buffer::scrypto_encode(&Bucket(id));
                     args.append(&mut encoded);
                 }
-            Args::Other(str) =>
+            Arg::Other(str) =>
                 {
                     let mut encoded = scrypto::buffer::scrypto_encode(str);
                     args.append(&mut encoded);
                 }
+        }
+    }
+
+    pub fn needs_resource(&self) -> Option<(String, Decimal)>
+    {
+        match self
+        {
+            Arg::Bucket(resource_address, amount) =>
+                {
+                    Some((resource_address.clone(), amount.clone()))
+                }
+            Arg::Other(_) => { None }
         }
     }
 }

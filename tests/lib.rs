@@ -2,8 +2,8 @@
 mod hello_tests
 {
     use suft::blueprint::Blueprint;
-    use suft::method::{Args, Method};
-    use suft::method::Args::Other;
+    use suft::method::{Arg, Method};
+    use suft::method::Arg::Other;
     use suft::test_environment::TestEnvironment;
     use suft::package::Package;
 
@@ -38,7 +38,7 @@ mod hello_tests
             }
         }
 
-        fn args(&self) -> Option<Vec<Args>>
+        fn args(&self) -> Option<Vec<Arg>>
         {
             None
         }
@@ -85,8 +85,8 @@ mod gumball_tests
     use scrypto::dec;
     use scrypto::prelude::{Decimal, RADIX_TOKEN};
     use suft::blueprint::Blueprint;
-    use suft::method::{Args, Method};
-    use suft::method::Args::Other;
+    use suft::method::{Arg, Method};
+    use suft::method::Arg::Other;
     use suft::test_environment::TestEnvironment;
     use suft::package::Package;
 
@@ -122,13 +122,13 @@ mod gumball_tests
             }
         }
 
-        fn args(&self) -> Option<Vec<Args>> {
+        fn args(&self) -> Option<Vec<Arg>> {
             match self
             {
                 GumballMethods::GetPrice => { Some(vec![Other(String::from(""))]) }
                 GumballMethods::BuyGumball(value) =>
                     {
-                        Some(vec![Args::Bucket(String::from("radix"), value.clone())])
+                        Some(vec![Arg::Bucket(String::from("radix"), value.clone())])
                     }
             }
         }

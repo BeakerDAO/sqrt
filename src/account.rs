@@ -5,7 +5,7 @@ use regex::Regex;
 use lazy_static::lazy_static;
 use crate::utils::run_command;
 
-pub(crate) struct Account{
+pub struct Account{
     address: String,
     public_key: String,
     private_key: String,

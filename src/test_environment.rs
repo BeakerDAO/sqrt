@@ -6,13 +6,11 @@ use crate::account::Account;
 use crate::component::Component;
 use crate::package::Package;
 use regex::Regex;
-use scrypto::core::NetworkDefinition;
-use scrypto::{args, dec};
-use scrypto::engine::types::BucketId;
+use scrypto::{dec};
 use scrypto::prelude::{ComponentAddress};
 use crate::manifest::Manifest;
 use crate::method::{Method};
-use crate::utils::{run_command, run_manifest, write_output};
+use crate::utils::{run_command, run_manifest};
 use crate::RADIX_TOKEN;
 
 pub struct TestEnvironment
@@ -47,19 +45,22 @@ impl TestEnvironment
 
     pub fn create_account(&mut self, name: &str)
     {
-        if self.accounts.contains_key(name)
+        let real_name = String::from(name).to_lowercase();
+        if self.accounts.contains_key(&real_name)
         {
             panic!("An account with this name already exists");
         }
         else
         {
-            self.accounts.insert(String::from(name), Account::new());
+            self.accounts.insert(String::from(real_name), Account::new());
         }
     }
 
     pub fn publish_package(&mut self, name: &str, mut package: Package, path: &str)
     {
-        if !self.packages.contains_key(name)
+        let real_name = String::from(name).to_lowercase();
+
+        if !self.packages.contains_key(&real_name)
         {
             lazy_static! {
             static ref PACKAGE_RE: Regex = Regex::new(r"Success! New Package: (\w*)").unwrap();
@@ -73,7 +74,7 @@ impl TestEnvironment
                 .expect(&format!("Something went wrong! Maybe the path was incorrect? \n{}", package_output))[1];
 
             package.set_address(String::from(package_address));
-            self.packages.insert(String::from(name), package);
+            self.packages.insert(real_name, package);
         }
         else
         {
@@ -126,39 +127,17 @@ impl TestEnvironment
         }
     }
 
-    pub fn set_current_epoch(&mut self, epoch: u64)
-    {
-        run_command(Command::new("resim")
-            .arg("set-current-epoch")
-            .arg(epoch.to_string()));
-    }
-
-    pub fn set_current_account(&mut self, name: &str)
-    {
-        self.current_account = String::from(name);
-        run_command(Command::new("resim")
-            .arg("set-default-account")
-            .arg(self.accounts.get(name).expect("Given account does not exist").address()));
-
-    }
-
-    pub fn reset()
-    {
-        run_command(Command::new("resim").arg("reset"));
-    }
-
-
     pub fn call_method<M>(&mut self, component: &str, method: M)
         where M: Method
     {
+        let account_comp = ComponentAddress::from_str(self.get_current_account().address())
+            .expect("Fatal Error: The stored address of the current account is faulty!");
+
         match self.components.get_mut(component)
         {
             None => { panic!("No component with name {}", component) }
             Some(comp) =>
                 {
-                    let account_comp = ComponentAddress::from_str(&self.accounts.get(&self.current_account).unwrap().address())
-                        .expect("Fatal Error: The stored address of the current account is faulty!");
-
                     let component_address = ComponentAddress::from_str(comp.address())
                         .expect("Fatal Error: The stored address of the given component is faulty!");
 
@@ -171,9 +150,46 @@ impl TestEnvironment
                     run_manifest(manifest, method_name);
 
                     comp.update_resources();
-                    self.accounts.get_mut(&self.current_account).unwrap().update_resources();
+                    self.update_current_account();
                 }
         }
     }
 
+    pub fn reset()
+    {
+        run_command(Command::new("resim").arg("reset"));
+    }
+
+    pub fn set_current_epoch(&mut self, epoch: u64)
+    {
+        run_command(Command::new("resim")
+            .arg("set-current-epoch")
+            .arg(epoch.to_string()));
+    }
+
+    fn update_current_account(&mut self)
+    {
+        self.accounts.get_mut(&self.current_account).unwrap().update_resources();
+    }
+
+    pub fn set_current_account(&mut self, name: &str)
+    {
+        let real_name = String::from(name).to_lowercase();
+        run_command(Command::new("resim")
+            .arg("set-default-account")
+            .arg(self.accounts.get(&real_name).expect("Given account does not exist").address()));
+
+        self.current_account = real_name;
+    }
+
+    pub fn get_current_account(&self) -> &Account
+    {
+        self.accounts.get(&self.current_account).unwrap()
+    }
+
+    pub fn get_token(&self, name: &str) -> Option<&String>
+    {
+        let real_name = String::from(name).to_lowercase();
+        self.tokens.get(&real_name)
+    }
 }

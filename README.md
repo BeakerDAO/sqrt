@@ -2,7 +2,8 @@
 Scrypto User-Friendly Test package
 
 # TODO
-- [ ] Make everything in lowercase in test_environment
+- [X] Make everything in lowercase in test_environment
+- [ ] Parse new coins
 - [ ] Allow multiple arguments return when instantiating a function
 - [ ] Allow multiple possible instantiation
 - [ ] Deal with returns and expected changes

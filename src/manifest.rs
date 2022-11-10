@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 use std::str::FromStr;
-use regex::internal::Inst;
 use scrypto::math::Decimal;
 use scrypto::prelude::{ComponentAddress, ResourceAddress};
 use crate::instructions::Instruction;
@@ -36,10 +35,10 @@ impl Manifest
                     {
                         match arg
                         {
-                            Arg::Bucket(resource_address, amount) =>
+                            Arg::Bucket(name, amount) =>
                                 {
-                                    let token_str = tokens.get(&resource_address)
-                                        .expect(&format!("Could not find token {} in the list of tokens", resource_address));
+                                    let token_str = tokens.get(&name.to_lowercase())
+                                        .expect(&format!("Could not find token {} in the list of tokens", name));
                                     let token_address = ResourceAddress::from_str(token_str)
                                         .expect("Error! The recorder address of the token is faulty!");
 

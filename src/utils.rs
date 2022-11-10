@@ -3,7 +3,6 @@ use std::fs::{File, OpenOptions};
 use std::io::Write;
 use std::path::Path;
 use std::process::Command;
-use transaction::model::{Instruction, MethodIdentifier, TransactionManifest};
 use crate::manifest::Manifest;
 
 pub fn run_command(command: &mut Command) -> String {

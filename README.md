@@ -1,16 +1,18 @@
 # suft
 Scrypto User-Friendly Test package
 
-# TODO
+# TODO for version 1.0
 - [X] Make everything in lowercase in test_environment
-- [ ] Parse new coins
-- [ ] Create tokens
+- [X] Parse new coins
+- [X] Create tokens
+- [X] Deal with buckets
+- [X] Generate Transaction Manifests
+- [ ] Deal with proofs
+- [ ] Deal with admin badges
+- [ ] Better file system
 - [ ] Allow multiple arguments return when instantiating a function
 - [ ] Allow multiple possible instantiation
 - [ ] Deal with returns and expected changes
-- [ ] Deal with proofs
-- [X] Deal with buckets
-- [X] Generate Transaction Manifests
 - [ ] Automatic implementation of method trait 
 
 

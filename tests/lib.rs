@@ -155,6 +155,8 @@ mod gumball_tests
         let gumball_package = Package::from(vec![(String::from("gumball"),gumball_blueprint)]);
         test_env.publish_package("gumball", gumball_package, "tests/assets/gumball-machine/");
         test_env.new_component("gumball_comp", "gumball", "gumball");
+
+        test_env.get_token("gumball").unwrap();
     }
 
     #[test]

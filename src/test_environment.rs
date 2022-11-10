@@ -5,7 +5,7 @@ use lazy_static::lazy_static;
 use crate::account::Account;
 use crate::component::Component;
 use crate::package::Package;
-use regex::Regex;
+use regex::{Regex};
 use scrypto::{dec};
 use scrypto::math::Decimal;
 use scrypto::prelude::{ComponentAddress};
@@ -140,9 +140,8 @@ impl TestEnvironment
                                     .expect(&format!("Something went wrong when trying to instantiate blueprint! \n{}", output))[1];
 
                                 let comp = Component::from(component_address);
-                                self.update_tokens_from_comp(&comp);
                                 self.components.insert(String::from(name), comp);
-
+                                self.update_tokens();
                             }
                         None =>
                             { panic!("Could not find a blueprint named {} for the package {}", blueprint_name, package_name); }
@@ -180,20 +179,35 @@ impl TestEnvironment
         }
     }
 
-    fn update_tokens_from_comp(&mut self, component : &Component)
+    fn update_tokens(&mut self)
     {
         let output = run_command(Command::new("resim")
-            .arg("show")
-            .arg(component.address()));
+            .arg("show-ledger"));
 
         lazy_static! {
-            static ref RESOURCES_RE: Regex = Regex::new(r#".─ \{ amount: ([\d.]*), resource address: (\w*), name: "(\w*)", "#).unwrap();
+            static ref RESOURCES_RE: Regex = Regex::new(r#"resource_(\w*)"#).unwrap();
         }
+
         for resource in RESOURCES_RE.captures_iter(&output)
         {
-            let address = &resource[2];
-            let name = &resource[3];
-            self.try_add_token(name, address);
+            let address = &resource[1];
+            let final_address = format!("{}{}", "resource_", address);
+            let output_show = run_command(Command::new("resim")
+                .arg("show")
+                .arg(&final_address));
+
+            lazy_static!{
+                static ref NAME_RE: Regex = Regex::new(r#" name: (\w*)"#).unwrap();
+            }
+
+            match &NAME_RE.captures(&output_show)
+            {
+                None => {},
+                Some(name) =>
+                    {
+                        self.try_add_token(&name[1], &final_address);
+                    }
+            }
         }
     }
 

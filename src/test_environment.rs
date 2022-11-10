@@ -7,6 +7,7 @@ use crate::component::Component;
 use crate::package::Package;
 use regex::Regex;
 use scrypto::{dec};
+use scrypto::math::Decimal;
 use scrypto::prelude::{ComponentAddress};
 use crate::manifest::Manifest;
 use crate::method::{Method};
@@ -53,6 +54,29 @@ impl TestEnvironment
         else
         {
             self.accounts.insert(String::from(real_name), Account::new());
+        }
+    }
+
+    pub fn create_fixed_supply_token(&mut self, name: &str, initial_supply: Decimal)
+    {
+        let real_name = String::from(name).to_lowercase();
+        match self.tokens.get(&real_name)
+        {
+            Some(_) => { panic!("A token with same name already exists!") }
+            None =>
+                {
+                    let output = run_command(Command::new("resim")
+                        .arg("new-token-fixed")
+                        .arg(initial_supply.to_string()));
+
+                    lazy_static!{
+                        static ref ADDRESS_RE: Regex = Regex::new(r#"ResourceAddress("(\w*)")"#).unwrap();
+                    }
+
+                    let resource_address = String::from(&ADDRESS_RE.captures(&output).unwrap()[1]);
+
+                    self.tokens.insert(real_name, resource_address);
+                }
         }
     }
 
@@ -116,6 +140,7 @@ impl TestEnvironment
                                     .expect(&format!("Something went wrong when trying to instantiate blueprint! \n{}", output))[1];
 
                                 let comp = Component::from(component_address);
+                                self.update_tokens_from_comp(&comp);
                                 self.components.insert(String::from(name), comp);
 
                             }
@@ -155,9 +180,44 @@ impl TestEnvironment
         }
     }
 
+    fn update_tokens_from_comp(&mut self, component : &Component)
+    {
+        let output = run_command(Command::new("resim")
+            .arg("show")
+            .arg(component.address()));
+
+        lazy_static! {
+            static ref RESOURCES_RE: Regex = Regex::new(r#".─ \{ amount: ([\d.]*), resource address: (\w*), name: "(\w*)", "#).unwrap();
+        }
+        for resource in RESOURCES_RE.captures_iter(&output)
+        {
+            let address = &resource[2];
+            let name = &resource[3];
+            self.try_add_token(name, address);
+        }
+    }
+
     pub fn reset()
     {
         run_command(Command::new("resim").arg("reset"));
+    }
+
+    fn update_current_account(&mut self)
+    {
+        self.accounts.get_mut(&self.current_account).unwrap().update_resources();
+    }
+
+    fn try_add_token(&mut self, name: &str, address: &str)
+    {
+        let real_name = String::from(name).to_lowercase();
+        match self.tokens.get(&real_name)
+        {
+            Some(_) => {},
+            None =>
+                {
+                    self.tokens.insert(real_name, String::from(address));
+                }
+        }
     }
 
     pub fn set_current_epoch(&mut self, epoch: u64)
@@ -165,11 +225,6 @@ impl TestEnvironment
         run_command(Command::new("resim")
             .arg("set-current-epoch")
             .arg(epoch.to_string()));
-    }
-
-    fn update_current_account(&mut self)
-    {
-        self.accounts.get_mut(&self.current_account).unwrap().update_resources();
     }
 
     pub fn set_current_account(&mut self, name: &str)

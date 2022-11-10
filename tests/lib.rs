@@ -62,6 +62,9 @@ mod hello_tests
         test_env.publish_package("hello", hello_package, "tests/assets/hello-token/");
         test_env.new_component("hello_comp", "hello", "hello");
 
+        // Check that tokens have been added to list
+        test_env.get_token("HelloToken").unwrap();
+        test_env.get_token("test").unwrap();
     }
 
     #[test]

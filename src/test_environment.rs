@@ -8,7 +8,7 @@ use crate::package::Package;
 use regex::{Regex};
 use scrypto::{dec};
 use scrypto::math::Decimal;
-use scrypto::prelude::{ComponentAddress};
+use scrypto::prelude::{ComponentAddress, ResourceAddress};
 use crate::manifest::Manifest;
 use crate::method::{Method};
 use crate::utils::{create_dir, run_command, run_manifest};
@@ -140,7 +140,22 @@ impl TestEnvironment
                                 let component_address = &COMPONENT_RE.captures(&output)
                                     .expect(&format!("Something went wrong when trying to instantiate blueprint! \n{}", output))[1];
 
-                                let comp = Component::from(component_address, package.path());
+                                let opt_badge: Option<String> = if blueprint.has_admin_badge()
+                                {
+                                    lazy_static! {
+                                    static ref ADMIN_BADGE: Regex = Regex::new(r#"Resource: (\w*)"#).unwrap();
+                                    }
+
+                                    let badge = &ADMIN_BADGE.captures(&output)
+                                        .expect("Could not read admin badge address!")[1];
+                                    Some(String::from(badge))
+                                }
+                                else
+                                {
+                                    None
+                                };
+
+                                let comp = Component::from(component_address, package.path(), opt_badge);
                                 self.components.insert(String::from(name), comp);
                                 self.update_tokens();
                             }
@@ -175,6 +190,21 @@ impl TestEnvironment
 
                     let mut manifest = Manifest::new();
                     manifest.lock_fee( account_comp.clone(), dec!(100));
+
+                    if method.needs_admin_badge()
+                    {
+                        let raw_address = match comp.admin_badge()
+                        {
+                            None => { panic!("The component does not have an admin badge!") }
+                            Some(str) => { str }
+                        };
+
+                        let badge_address = ResourceAddress::from_str(raw_address)
+                            .expect("Fatal Error: The stored admin badge address is faulty!");
+
+                        manifest.create_proof(account_comp.clone(), badge_address);
+                    }
+
                     let method_name = method.name();
                     manifest.call_method(&method, component_address, account_comp.clone(), &self.tokens);
                     manifest.drop_proofs();

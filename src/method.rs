@@ -10,6 +10,9 @@ pub trait Method
     /// Returns the arguments of the blueprint method
     fn args(&self) -> Option<Vec<Arg>>;
 
+    /// Return whether the function needs an admin badge to get called
+    fn needs_admin_badge(&self) -> bool;
+
 }
 
 #[derive(Clone)]

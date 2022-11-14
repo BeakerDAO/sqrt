@@ -22,6 +22,10 @@ mod hello_tests
         {
             "Hello"
         }
+
+        fn has_admin_badge(&self) -> bool {
+            false
+        }
     }
 
     enum HelloMethods
@@ -41,6 +45,10 @@ mod hello_tests
         fn args(&self) -> Option<Vec<Arg>>
         {
             method_args![]
+        }
+
+        fn needs_admin_badge(&self) -> bool {
+            false
         }
     }
 

@@ -9,18 +9,21 @@ pub struct Component
 {
     address: String,
     resources: HashMap<String, Decimal>,
-    package_path: String
+    package_path: String,
+    admin_badge: Option<String>
 }
 
 impl Component
 {
-    pub fn from(address: &str, package_path: &str) -> Component
+    pub fn from(address: &str, package_path: &str, admin_badge: Option<String> ) -> Component
     {
+
         let mut comp = Component
         {
             address: String::from(address),
             resources: HashMap::new(),
-            package_path: String::from(package_path)
+            package_path: String::from(package_path),
+            admin_badge
         };
         comp.update_resources();
         comp
@@ -61,4 +64,10 @@ impl Component
     }
 
     pub fn package_path(&self) -> &str { &self.package_path }
+
+
+    pub fn admin_badge(&self) -> &Option<String> {
+        &self.admin_badge
+    }
+
 }

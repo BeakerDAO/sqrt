@@ -6,7 +6,7 @@ mod rns_tests
     use suft::blueprint::Blueprint;
     use suft::method::{Arg, Method};
     use suft::method::Arg::{BucketArg, ComponentAddressArg, ProofArg, StringArg, U8};
-    use suft::method_args;
+    use suft::{method_args};
     use suft::package::Package;
     use suft::test_environment::TestEnvironment;
 
@@ -25,13 +25,17 @@ mod rns_tests
             "RadixNameService"
         }
 
+        fn has_admin_badge(&self) -> bool {
+            true
+        }
     }
 
     enum RNSMethods
     {
         RegisterName(String, String, u8, Decimal),
         UnregisterName,
-        UpdateAddress(String, Decimal)
+        UpdateAddress(String, Decimal),
+        WithdrawFees
     }
 
     impl Method for RNSMethods
@@ -50,6 +54,10 @@ mod rns_tests
                 RNSMethods::UpdateAddress(_, _) =>
                     {
                         "update_address"
+                    }
+                RNSMethods::WithdrawFees =>
+                    {
+                        "withdraw_fees"
                     }
             }
         }
@@ -80,6 +88,18 @@ mod rns_tests
                             BucketArg(String::from("radix"), *fee)
                         ]
                     }
+                RNSMethods::WithdrawFees =>
+                    {
+                        method_args![]
+                    }
+            }
+        }
+
+        fn needs_admin_badge(&self) -> bool {
+            match self
+            {
+                RNSMethods::WithdrawFees => { true }
+                _ => { false }
             }
         }
     }
@@ -186,6 +206,58 @@ mod rns_tests
             String::from(account.address()),
             dec!("15")
         ));
+    }
+
+    #[test]
+    fn test_withdraw_fees()
+    {
+        let mut test_env = TestEnvironment::new();
+        let rns_blueprint = Box::new(RNSBp{});
+        let mut rns_package = Package::new("tests/assets/radix-name-service");
+        rns_package.add_blueprint("rns", rns_blueprint);
+        test_env.publish_package("rns", rns_package);
+        test_env.new_component("rns_comp", "rns", "rns");
+
+        let domain_name = test_env.get_token("DomainName").unwrap().clone();
+        let current_account = test_env.get_current_account();
+        test_env.call_method("rns_comp", RNSMethods::RegisterName(
+            String::from("test.xrd"),
+            String::from(current_account.address()),
+            1,
+            dec!("15")
+        ));
+        let owned_nft = test_env.get_current_account().amount_owned(&domain_name);
+        assert_eq!(owned_nft, Decimal::one());
+
+        test_env.call_method("rns_comp", RNSMethods::WithdrawFees);
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_withdraw_fees_fail()
+    {
+        let mut test_env = TestEnvironment::new();
+        let rns_blueprint = Box::new(RNSBp{});
+        let mut rns_package = Package::new("tests/assets/radix-name-service");
+        rns_package.add_blueprint("rns", rns_blueprint);
+        test_env.publish_package("rns", rns_package);
+        test_env.new_component("rns_comp", "rns", "rns");
+
+        let domain_name = test_env.get_token("DomainName").unwrap().clone();
+        let current_account = test_env.get_current_account();
+        test_env.call_method("rns_comp", RNSMethods::RegisterName(
+            String::from("test.xrd"),
+            String::from(current_account.address()),
+            1,
+            dec!("15")
+        ));
+        let owned_nft = test_env.get_current_account().amount_owned(&domain_name);
+        assert_eq!(owned_nft, Decimal::one());
+
+        test_env.create_account("test");
+        test_env.set_current_account("test");
+
+        test_env.call_method("rns_comp", RNSMethods::WithdrawFees);
     }
 
 }

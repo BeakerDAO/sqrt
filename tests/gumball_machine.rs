@@ -23,6 +23,10 @@ mod gumball_tests
         fn name(&self) -> &str {
             "GumballMachine"
         }
+
+        fn has_admin_badge(&self) -> bool {
+            false
+        }
     }
 
     enum GumballMethods
@@ -50,6 +54,10 @@ mod gumball_tests
                         method_args![Arg::BucketArg(String::from("radix"), value.clone())]
                     }
             }
+        }
+
+        fn needs_admin_badge(&self) -> bool {
+            false
         }
     }
 

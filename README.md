@@ -2,18 +2,8 @@
 Scrypto User-Friendly Test package
 
 # TODO for version 1.0
-- [X] Make everything in lowercase in test_environment
-- [X] Parse new coins
-- [X] Create tokens
-- [X] Deal with buckets
-- [X] Generate Transaction Manifests
-- [X] Deal with proofs
-- [X] Deal with any type of argument
-- [X] Better file system
-- [X] Macro for method args
 - [ ] Deal with return of blueprint methods
 - [ ] Generic RTM
-- [ ] Deal with admin badges
 - [ ] Allow multiple arguments return when instantiating a function
 - [ ] Allow multiple possible instantiation
 - [ ] Deal with blueprints state 

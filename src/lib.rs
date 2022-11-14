@@ -10,5 +10,5 @@ pub mod method;
 mod instructions;
 mod manifest;
 
-const RADIX_TOKEN: &str = "resource_sim1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqzqu57yag";
+pub const RADIX_TOKEN: &str = "resource_sim1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqzqu57yag";
 

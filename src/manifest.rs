@@ -89,21 +89,28 @@ impl Manifest
         self
     }
 
-    pub fn create_proof(&mut self, caller_address: ComponentAddress, resource_address: ResourceAddress, proof_id : u32) -> &mut Self
+    pub fn create_proof(&mut self, caller_address: ComponentAddress, resource_address: ResourceAddress) -> &mut Self
     {
         let inst_1 = Instruction::CallMethod {
             component_address: caller_address,
             method_name: "create_proof".to_string(),
             args: vec![format!("ResourceAddress(\"{}\")", resource_address)]
         };
+        self.needed_resources.push(inst_1);
 
-        let inst_2 = Instruction::CreateProofFromAuthZone {
+        self
+    }
+
+    pub fn create_usable_proof(&mut self, caller_address: ComponentAddress, resource_address: ResourceAddress, proof_id : u32) -> &mut Self
+    {
+        self.create_proof(caller_address, resource_address.clone());
+
+        let inst = Instruction::CreateProofFromAuthZone {
             resource_address,
             proof_id
         };
 
-        self.needed_resources.push(inst_1);
-        self.needed_resources.push(inst_2);
+        self.needed_resources.push(inst);
 
         self
     }
@@ -242,7 +249,7 @@ impl Manifest
                     let token_address = ResourceAddress::from_str(token_str)
                         .expect("Error! The recorder address of the token is faulty!");
 
-                    self.create_proof(caller_address.clone(), token_address, self.id);
+                    self.create_usable_proof(caller_address.clone(), token_address, self.id);
                     let ret = format!("Proof(\"{}\")", self.id);
                     self.id+=1;
                     self.has_proofs = true;

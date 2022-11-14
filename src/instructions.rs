@@ -17,6 +17,13 @@ pub enum Instruction {
         method_name: String,
         args: Vec<String>
     },
+
+    CreateProofFromAuthZone{
+        resource_address: ResourceAddress,
+        proof_id: u32
+    },
+
+    DropAllProofs
 }
 
 impl Display for Instruction
@@ -47,6 +54,17 @@ impl Display for Instruction
                                \tComponentAddress(\"{}\")\n\
                                \t\"{}\"\
                                {};", component_address, method_name, arg_str)
+                }
+            Instruction::CreateProofFromAuthZone { resource_address, proof_id } =>
+                {
+                    write!(f, "CREATE_PROOF_FROM_AUTH_ZONE\n\
+                              \tResourceAddress(\"{}\")\n\
+                              \tProof(\"{}\");", resource_address, proof_id)
+                }
+
+            Instruction::DropAllProofs =>
+                {
+                    write!(f, "DROP_ALL_PROOFS;")
                 }
         }
     }

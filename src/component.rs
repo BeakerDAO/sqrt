@@ -9,16 +9,18 @@ pub struct Component
 {
     address: String,
     resources: HashMap<String, Decimal>,
+    package_path: String
 }
 
 impl Component
 {
-    pub fn from(address: &str) -> Component
+    pub fn from(address: &str, package_path: &str) -> Component
     {
         let mut comp = Component
         {
             address: String::from(address),
-            resources: HashMap::new()
+            resources: HashMap::new(),
+            package_path: String::from(package_path)
         };
         comp.update_resources();
         comp
@@ -57,4 +59,6 @@ impl Component
     pub fn address(&self) -> &str {
         &self.address
     }
+
+    pub fn package_path(&self) -> &str { &self.package_path }
 }

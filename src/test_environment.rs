@@ -11,7 +11,7 @@ use scrypto::math::Decimal;
 use scrypto::prelude::{ComponentAddress};
 use crate::manifest::Manifest;
 use crate::method::{Method};
-use crate::utils::{run_command, run_manifest};
+use crate::utils::{create_dir, run_command, run_manifest};
 use crate::RADIX_TOKEN;
 
 pub struct TestEnvironment
@@ -80,7 +80,7 @@ impl TestEnvironment
         }
     }
 
-    pub fn publish_package(&mut self, name: &str, mut package: Package, path: &str)
+    pub fn publish_package(&mut self, name: &str, mut package: Package)
     {
         let real_name = String::from(name).to_lowercase();
 
@@ -92,12 +92,13 @@ impl TestEnvironment
 
             let package_output = run_command(Command::new("resim")
                 .arg("publish")
-                .arg(path));
+                .arg(package.path()));
 
             let package_address = &PACKAGE_RE.captures(&package_output)
                 .expect(&format!("Something went wrong! Maybe the path was incorrect? \n{}", package_output))[1];
 
             package.set_address(String::from(package_address));
+            create_dir(package.path());
             self.packages.insert(real_name, package);
         }
         else
@@ -139,7 +140,7 @@ impl TestEnvironment
                                 let component_address = &COMPONENT_RE.captures(&output)
                                     .expect(&format!("Something went wrong when trying to instantiate blueprint! \n{}", output))[1];
 
-                                let comp = Component::from(component_address);
+                                let comp = Component::from(component_address, package.path());
                                 self.components.insert(String::from(name), comp);
                                 self.update_tokens();
                             }
@@ -154,9 +155,16 @@ impl TestEnvironment
     pub fn call_method<M>(&mut self, component: &str, method: M)
         where M: Method
     {
+       self.call_method_with_output(component, method);
+    }
+
+    pub fn call_method_with_output<M>(&mut self, component: &str, method: M) -> String
+        where M: Method
+    {
         let account_comp = ComponentAddress::from_str(self.get_current_account().address())
             .expect("Fatal Error: The stored address of the current account is faulty!");
 
+        let output;
         match self.components.get_mut(component)
         {
             None => { panic!("No component with name {}", component) }
@@ -169,14 +177,17 @@ impl TestEnvironment
                     manifest.lock_fee( account_comp.clone(), dec!(100));
                     let method_name = method.name();
                     manifest.call_method(&method, component_address, account_comp.clone(), &self.tokens);
+                    manifest.drop_proofs();
                     manifest.deposit_batch(account_comp);
 
-                    run_manifest(manifest, method_name);
+                    output = run_manifest(manifest, comp.package_path(), method_name);
 
                     comp.update_resources();
                     self.update_current_account();
                 }
         }
+
+        output
     }
 
     fn update_tokens(&mut self)
@@ -260,5 +271,10 @@ impl TestEnvironment
     {
         let real_name = String::from(name).to_lowercase();
         self.tokens.get(&real_name)
+    }
+
+    pub fn get_account(&self, name: &str) -> Option<&Account>
+    {
+        self.accounts.get(name)
     }
 }

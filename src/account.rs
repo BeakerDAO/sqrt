@@ -99,9 +99,9 @@ impl Account
         &self.private_key
     }
 
-    pub fn amount_owned(&self, resource: String) -> Decimal
+    pub fn amount_owned(&self, resource: &String) -> Decimal
     {
-        match self.resources.get(&resource)
+        match self.resources.get(resource)
         {
             None => { Decimal::zero() }
             Some(amount) => { *amount }
@@ -117,7 +117,6 @@ mod tests
     use std::collections::HashMap;
     use scrypto::dec;
     use crate::account::Account;
-    use crate::RADIX_TOKEN;
 
     #[test]
     fn test_from()

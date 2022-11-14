@@ -4,23 +4,25 @@ use crate::blueprint::Blueprint;
 pub struct Package
 {
     blueprints: HashMap<String, Box<dyn Blueprint>>,
-    address: String
+    address: String,
+    path: String
 }
 
 impl Package
 {
-    pub fn new() -> Package
+    pub fn new(path: &str) -> Package
     {
         Package
         {
             blueprints: HashMap::new(),
-            address: "".to_string()
+            address: "".to_string(),
+            path: String::from(path)
         }
     }
 
-    pub fn from(blueprints :Vec<(String,Box<dyn Blueprint>)>) -> Package
+    pub fn from(path: &str, blueprints :Vec<(&str,Box<dyn Blueprint>)>) -> Package
     {
-        let mut package = Self::new();
+        let mut package = Self::new(path);
         for (name,blueprint) in blueprints
         {
             package.add_blueprint(name, blueprint)
@@ -28,11 +30,11 @@ impl Package
         package
     }
 
-    pub fn add_blueprint(&mut self, name: String, blueprint: Box<dyn Blueprint>)
+    pub fn add_blueprint(&mut self, name: &str, blueprint: Box<dyn Blueprint>)
     {
-        if !self.blueprints.contains_key(&name)
+        if !self.blueprints.contains_key(name)
         {
-            self.blueprints.insert(name, blueprint);
+            self.blueprints.insert(String::from(name), blueprint);
         }
         else
         {
@@ -53,4 +55,6 @@ impl Package
     pub fn address(&self) -> &str {
         &self.address
     }
+
+    pub fn path(&self) -> &str { &self.path }
 }

@@ -14,9 +14,9 @@ mod rns_tests
 
     impl Blueprint for RNSBp
     {
-        fn instantiate(&self) -> (&str, Vec<&str>) {
+        fn instantiate(&self, _arg_values: Vec<String>) -> (&str, Vec<String>) {
             let function_name = "instantiate_rns";
-            let args = vec!["1", "0.01", "0.01"];
+            let args = vec![String::from("1"), String::from("0.01"), String::from("0.01")];
 
             (function_name, args)
         }
@@ -123,7 +123,7 @@ mod rns_tests
         let mut rns_package = Package::new("tests/assets/radix-name-service");
         rns_package.add_blueprint("rns", rns_blueprint);
         test_env.publish_package("rns", rns_package);
-        test_env.new_component("rns_comp", "rns", "rns");
+        test_env.new_component("rns_comp", "rns", "rns", vec![]);
 
         test_env.get_token("DomainName").unwrap();
     }
@@ -136,7 +136,7 @@ mod rns_tests
         let mut rns_package = Package::new("tests/assets/radix-name-service");
         rns_package.add_blueprint("rns", rns_blueprint);
         test_env.publish_package("rns", rns_package);
-        test_env.new_component("rns_comp", "rns", "rns");
+        test_env.new_component("rns_comp", "rns", "rns", vec![]);
 
         let domain_name = test_env.get_token("DomainName").unwrap().clone();
 
@@ -159,7 +159,7 @@ mod rns_tests
         let mut rns_package = Package::new("tests/assets/radix-name-service");
         rns_package.add_blueprint("rns", rns_blueprint);
         test_env.publish_package("rns", rns_package);
-        test_env.new_component("rns_comp", "rns", "rns");
+        test_env.new_component("rns_comp", "rns", "rns", vec![]);
 
         let domain_name = test_env.get_token("DomainName").unwrap().clone();
 
@@ -187,7 +187,7 @@ mod rns_tests
         let mut rns_package = Package::new("tests/assets/radix-name-service");
         rns_package.add_blueprint("rns", rns_blueprint);
         test_env.publish_package("rns", rns_package);
-        test_env.new_component("rns_comp", "rns", "rns");
+        test_env.new_component("rns_comp", "rns", "rns", vec![]);
 
         let domain_name = test_env.get_token("DomainName").unwrap().clone();
         let current_account = test_env.get_current_account();
@@ -216,7 +216,7 @@ mod rns_tests
         let mut rns_package = Package::new("tests/assets/radix-name-service");
         rns_package.add_blueprint("rns", rns_blueprint);
         test_env.publish_package("rns", rns_package);
-        test_env.new_component("rns_comp", "rns", "rns");
+        test_env.new_component("rns_comp", "rns", "rns", vec![]);
 
         let domain_name = test_env.get_token("DomainName").unwrap().clone();
         let current_account = test_env.get_current_account();
@@ -241,7 +241,7 @@ mod rns_tests
         let mut rns_package = Package::new("tests/assets/radix-name-service");
         rns_package.add_blueprint("rns", rns_blueprint);
         test_env.publish_package("rns", rns_package);
-        test_env.new_component("rns_comp", "rns", "rns");
+        test_env.new_component("rns_comp", "rns", "rns", vec![]);
 
         let domain_name = test_env.get_token("DomainName").unwrap().clone();
         let current_account = test_env.get_current_account();
@@ -260,4 +260,11 @@ mod rns_tests
         test_env.call_method("rns_comp", RNSMethods::WithdrawFees);
     }
 
+    #[test]
+    fn test()
+    {
+        let mut test_env = TestEnvironment::new();
+        test_env.create_fixed_supply_token("usd", dec!(1000));
+
+    }
 }

@@ -18,7 +18,8 @@ impl Account
     pub fn new() -> Account
     {
         let account_command = run_command(Command::new("resim")
-            .arg("new-account"));
+            .arg("new-account"),
+            false);
         Self::from(&account_command)
     }
 
@@ -71,12 +72,13 @@ impl Account
     {
         let info = run_command(Command::new("resim")
             .arg("show")
-            .arg(&self.address));
+            .arg(&self.address),
+            false);
 
         // Resource line is of the form
         // amount: 1000, resource address: resource_sim1qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqqzqu57yag, name: "Radix", symbol: "XRD"
         lazy_static! {
-            static ref RESOURCE_RE: Regex = Regex::new(r#".─ \{ amount: ([\d.]*), resource address: (\w*),"#).unwrap();
+            static ref RESOURCE_RE: Regex = Regex::new(r#"amount: ([\d.]*), resource address: (\w*)"#).unwrap();
         }
 
         for cap in RESOURCE_RE.captures_iter(&info)

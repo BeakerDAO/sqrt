@@ -11,7 +11,7 @@ use scrypto::math::Decimal;
 use scrypto::prelude::{ComponentAddress, ResourceAddress};
 use crate::manifest::Manifest;
 use crate::method::{Method};
-use crate::utils::{create_dir, run_command, run_manifest};
+use crate::utils::{create_dir, run_command, run_manifest, transfer, write_transfer};
 use crate::RADIX_TOKEN;
 
 pub struct TestEnvironment
@@ -44,7 +44,7 @@ impl TestEnvironment
        }
     }
 
-    pub fn create_account(&mut self, name: &str)
+    pub fn create_account(&mut self, name: &str) -> &str
     {
         let real_name = String::from(name).to_lowercase();
         if self.accounts.contains_key(&real_name)
@@ -53,11 +53,12 @@ impl TestEnvironment
         }
         else
         {
-            self.accounts.insert(String::from(real_name), Account::new());
+            self.accounts.insert(real_name.clone(), Account::new());
+            self.accounts.get(&real_name).unwrap().address()
         }
     }
 
-    pub fn create_fixed_supply_token(&mut self, name: &str, initial_supply: Decimal)
+    pub fn create_fixed_supply_token(&mut self, name: &str, initial_supply: Decimal) -> String
     {
         let real_name = String::from(name).to_lowercase();
         match self.tokens.get(&real_name)
@@ -67,15 +68,18 @@ impl TestEnvironment
                 {
                     let output = run_command(Command::new("resim")
                         .arg("new-token-fixed")
-                        .arg(initial_supply.to_string()));
+                        .arg(initial_supply.to_string()),
+                        false);
 
                     lazy_static!{
-                        static ref ADDRESS_RE: Regex = Regex::new(r#"ResourceAddress("(\w*)")"#).unwrap();
+                        static ref ADDRESS_RE: Regex = Regex::new(r#"Resource: (\w*)"#).unwrap();
                     }
 
                     let resource_address = String::from(&ADDRESS_RE.captures(&output).unwrap()[1]);
 
-                    self.tokens.insert(real_name, resource_address);
+                    self.tokens.insert(real_name, resource_address.clone());
+                    self.update_current_account();
+                    resource_address
                 }
         }
     }
@@ -92,7 +96,8 @@ impl TestEnvironment
 
             let package_output = run_command(Command::new("resim")
                 .arg("publish")
-                .arg(package.path()));
+                .arg(package.path()),
+                false);
 
             let package_address = &PACKAGE_RE.captures(&package_output)
                 .expect(&format!("Something went wrong! Maybe the path was incorrect? \n{}", package_output))[1];
@@ -108,7 +113,7 @@ impl TestEnvironment
 
     }
 
-    pub fn new_component(&mut self, name: &str, package_name: &str, blueprint_name: &str)
+    pub fn new_component(&mut self, name: &str, package_name: &str, blueprint_name: &str, args_values: Vec<String>)
     {
         if self.components.contains_key(name)
         {
@@ -124,14 +129,15 @@ impl TestEnvironment
                         Some(box_blueprint) =>
                             {
                                 let blueprint = box_blueprint.as_ref();
-                                let (inst_name, args) = blueprint.instantiate();
+                                let (inst_name, args) = blueprint.instantiate(args_values);
 
                                 let output = run_command(Command::new("resim")
                                     .arg("call-function")
                                     .arg(package.address())
                                     .arg(blueprint.name())
                                     .arg(inst_name)
-                                    .args(args));
+                                    .args(args),
+                                    false);
 
                                 lazy_static! {
                                     static ref COMPONENT_RE: Regex = Regex::new(r#"ComponentAddress\("(\w*)"\)"#).unwrap();
@@ -157,6 +163,8 @@ impl TestEnvironment
 
                                 let comp = Component::from(component_address, package.path(), opt_badge);
                                 self.components.insert(String::from(name), comp);
+                                write_transfer(package.path());
+                                self.update_current_account();
                                 self.update_tokens();
                             }
                         None =>
@@ -211,8 +219,6 @@ impl TestEnvironment
                     manifest.deposit_batch(account_comp);
 
                     output = run_manifest(manifest, comp.package_path(), method_name);
-
-                    comp.update_resources();
                     self.update_current_account();
                 }
         }
@@ -220,41 +226,32 @@ impl TestEnvironment
         output
     }
 
-    fn update_tokens(&mut self)
+    pub fn transfer_to(&mut self, account: &str, token: &str, amount: Decimal)
     {
-        let output = run_command(Command::new("resim")
-            .arg("show-ledger"));
-
-        lazy_static! {
-            static ref RESOURCES_RE: Regex = Regex::new(r#"resource_(\w*)"#).unwrap();
-        }
-
-        for resource in RESOURCES_RE.captures_iter(&output)
+        let from = String::from(self.get_current_account().address());
+        match self.accounts.get_mut(account)
         {
-            let address = &resource[1];
-            let final_address = format!("{}{}", "resource_", address);
-            let output_show = run_command(Command::new("resim")
-                .arg("show")
-                .arg(&final_address));
-
-            lazy_static!{
-                static ref NAME_RE: Regex = Regex::new(r#" name: (\w*)"#).unwrap();
-            }
-
-            match &NAME_RE.captures(&output_show)
-            {
-                None => {},
-                Some(name) =>
+            None => { panic!("Account {} does not exist", account) }
+            Some(acc) =>
+                {
+                    match self.tokens.get(token)
                     {
-                        self.try_add_token(&name[1], &final_address);
+                        None => { panic!("Token {} does not exist", token) }
+                        Some(tok) =>
+                            {
+                                transfer(&from, acc.address(), tok.as_str(), amount.to_string().as_str());
+                                acc.update_resources();
+                                self.accounts.get_mut(&self.current_account).unwrap().update_resources();
+
+                            }
                     }
-            }
+                }
         }
     }
 
     pub fn reset()
     {
-        run_command(Command::new("resim").arg("reset"));
+        run_command(Command::new("resim").arg("reset"), false);
     }
 
     fn update_current_account(&mut self)
@@ -262,32 +259,24 @@ impl TestEnvironment
         self.accounts.get_mut(&self.current_account).unwrap().update_resources();
     }
 
-    fn try_add_token(&mut self, name: &str, address: &str)
-    {
-        let real_name = String::from(name).to_lowercase();
-        match self.tokens.get(&real_name)
-        {
-            Some(_) => {},
-            None =>
-                {
-                    self.tokens.insert(real_name, String::from(address));
-                }
-        }
-    }
-
     pub fn set_current_epoch(&mut self, epoch: u64)
     {
         run_command(Command::new("resim")
             .arg("set-current-epoch")
-            .arg(epoch.to_string()));
+            .arg(epoch.to_string()),
+            false);
     }
+
 
     pub fn set_current_account(&mut self, name: &str)
     {
         let real_name = String::from(name).to_lowercase();
+        let account = self.accounts.get(&real_name).expect("Given account does not exist");
         run_command(Command::new("resim")
             .arg("set-default-account")
-            .arg(self.accounts.get(&real_name).expect("Given account does not exist").address()));
+            .arg(account.address())
+            .arg(account.private_key()),
+        false);
 
         self.current_account = real_name;
     }
@@ -306,5 +295,64 @@ impl TestEnvironment
     pub fn get_account(&self, name: &str) -> Option<&Account>
     {
         self.accounts.get(name)
+    }
+
+    pub fn get_component(&self, name: &str) -> Option<&str>
+    {
+        match self.components.get(name)
+        {
+            None => { None }
+            Some(comp) =>
+                {
+                    Some(comp.address())
+                }
+        }
+    }
+
+    fn try_add_token(&mut self, name: &str, address: &str)
+    {
+        let real_name = String::from(name).to_lowercase();
+        match self.tokens.get(&real_name)
+        {
+            Some(_) => {},
+            None =>
+                {
+                    self.tokens.insert(real_name, String::from(address));
+                }
+        }
+    }
+
+    fn update_tokens(&mut self)
+    {
+        let output = run_command(Command::new("resim")
+            .arg("show-ledger"),
+            false);
+
+        lazy_static! {
+            static ref RESOURCES_RE: Regex = Regex::new(r#"resource_(\w*)"#).unwrap();
+        }
+
+        for resource in RESOURCES_RE.captures_iter(&output)
+        {
+            let address = &resource[1];
+            let final_address = format!("{}{}", "resource_", address);
+            let output_show = run_command(Command::new("resim")
+                .arg("show")
+                .arg(&final_address),
+                false);
+
+            lazy_static!{
+                static ref NAME_RE: Regex = Regex::new(r#"name: (.*)"#).unwrap();
+            }
+
+            match &NAME_RE.captures(&output_show)
+            {
+                None => {},
+                Some(name) =>
+                    {
+                        self.try_add_token(&name[1], &final_address);
+                    }
+            }
+        }
     }
 }

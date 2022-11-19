@@ -2,7 +2,7 @@ pub trait Blueprint
 {
     /// Returns the name of the function to instantiate the blueprint as first argument
     /// and a vector of arguments  value to call with
-    fn instantiate(&self) -> (&str, Vec<&str>);
+    fn instantiate(&self, arg_values: Vec<String>) -> (&str, Vec<String>);
 
     /// Returns the name of the blueprint
     fn name(&self) -> &str;

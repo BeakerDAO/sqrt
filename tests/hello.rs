@@ -12,7 +12,7 @@ mod hello_tests
 
     impl Blueprint for HelloBp
     {
-        fn instantiate(&self) -> (&str, Vec<&str>)
+        fn instantiate(&self, _arg_values: Vec<String>) -> (&str, Vec<String>)
         {
             let function_name = "instantiate_hello";
             (function_name, vec![])
@@ -70,7 +70,7 @@ mod hello_tests
         let mut hello_package = Package::new("tests/assets/hello-token/");
         hello_package.add_blueprint("hello", hello_blueprint);
         test_env.publish_package("hello", hello_package);
-        test_env.new_component("hello_comp", "hello", "hello");
+        test_env.new_component("hello_comp", "hello", "hello", vec![]);
 
         // Check that tokens have been added to list
         test_env.get_token("HelloToken").unwrap();
@@ -85,7 +85,7 @@ mod hello_tests
         let mut hello_package = Package::new("tests/assets/hello-token/");
         hello_package.add_blueprint("hello", hello_blueprint);
         test_env.publish_package("hello", hello_package);
-        test_env.new_component("hello_comp", "hello", "hello");
+        test_env.new_component("hello_comp", "hello", "hello", vec![]);
 
         test_env.call_method("hello_comp", HelloMethods::FreeToken);
 

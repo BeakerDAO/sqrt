@@ -13,9 +13,9 @@ mod gumball_tests
 
     impl Blueprint for GumballBp
     {
-        fn instantiate(&self) -> (&str, Vec<&str>) {
+        fn instantiate(&self, _arg_values: Vec<String>) -> (&str, Vec<String>) {
             let name = "instantiate_gumball_machine";
-            let args = vec!["1.5"];
+            let args = vec![String::from("1.5")];
 
             (name, args)
         }
@@ -80,7 +80,7 @@ mod gumball_tests
         let mut gumball_package = Package::new("tests/assets/gumball-machine/");
         gumball_package.add_blueprint("gumball", gumball_blueprint);
         test_env.publish_package("gumball", gumball_package);
-        test_env.new_component("gumball_comp", "gumball", "gumball");
+        test_env.new_component("gumball_comp", "gumball", "gumball", vec![]);
 
         test_env.get_token("gumball").unwrap();
     }
@@ -93,7 +93,7 @@ mod gumball_tests
         let mut gumball_package = Package::new("tests/assets/gumball-machine/");
         gumball_package.add_blueprint("gumball", gumball_blueprint);
         test_env.publish_package("gumball", gumball_package);
-        test_env.new_component("gumball_comp", "gumball", "gumball");
+        test_env.new_component("gumball_comp", "gumball", "gumball", vec![]);
 
         test_env.call_method("gumball_comp", GumballMethods::GetPrice);
     }
@@ -106,7 +106,7 @@ mod gumball_tests
         let mut gumball_package = Package::new("tests/assets/gumball-machine/");
         gumball_package.add_blueprint("gumball", gumball_blueprint);
         test_env.publish_package("gumball", gumball_package);
-        test_env.new_component("gumball_comp", "gumball", "gumball");
+        test_env.new_component("gumball_comp", "gumball", "gumball", vec![]);
         test_env.call_method("gumball_comp", GumballMethods::BuyGumball(dec!(15)));
 
         assert_eq!(test_env.get_current_account().amount_owned(test_env.get_token("gumball").unwrap()), Decimal::one());

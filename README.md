@@ -10,8 +10,6 @@ Scrypto User-Friendly Test package
 - [ ] Deal with returns and automatically check how things should have evolved
 - [ ] Automatic implementation of method trait 
 
-
-
 # Usage
 To use this library, for every blueprint that you want to test, create an empty struct and implement the `Blueprint` 
 trait for it. This trait basically explains how the blueprint should be instantiated.

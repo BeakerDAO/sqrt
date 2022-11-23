@@ -297,6 +297,33 @@ impl TestEnvironment
         self.accounts.get(name)
     }
 
+    pub fn amount_owned_by(&self, account: &str, token: &str) -> Decimal
+    {
+        match self.accounts.get(account)
+        {
+            None => { panic!("The account {} does not exist", account) }
+            Some(acc) =>
+                {
+                    match self.tokens.get(&token.to_lowercase())
+                    {
+                        None => { panic!("The token {} does not exist", token) }
+                        Some(tok) => { acc.amount_owned(tok) }
+                    }
+                }
+
+        }
+    }
+
+    pub fn amount_owned_by_current(&self, token: &str) -> Decimal
+    {
+        match self.tokens.get(&token.to_lowercase())
+        {
+            None => { panic!("The token {} does not exist", token) }
+            Some(tok) => { self.get_current_account().amount_owned(tok) }
+        }
+    }
+
+
     pub fn get_component(&self, name: &str) -> Option<&str>
     {
         match self.components.get(name)

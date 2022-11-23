@@ -1,11 +1,11 @@
 #[cfg(test)]
 mod hello_tests
 {
-    use suft::blueprint::Blueprint;
-    use suft::method::{Arg, Method};
-    use suft::method_args;
-    use suft::test_environment::TestEnvironment;
-    use suft::package::Package;
+    use sqrt::blueprint::Blueprint;
+    use sqrt::method::{Arg, Method};
+    use sqrt::method_args;
+    use sqrt::test_environment::TestEnvironment;
+    use sqrt::package::Package;
 
 
     struct HelloBp {}

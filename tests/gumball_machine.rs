@@ -3,11 +3,11 @@ mod gumball_tests
 {
     use scrypto::dec;
     use scrypto::prelude::{Decimal};
-    use suft::blueprint::Blueprint;
-    use suft::method::{Arg, Method};
-    use suft::method_args;
-    use suft::test_environment::TestEnvironment;
-    use suft::package::Package;
+    use sqrt::blueprint::Blueprint;
+    use sqrt::method::{Arg, Method};
+    use sqrt::method_args;
+    use sqrt::test_environment::TestEnvironment;
+    use sqrt::package::Package;
 
     struct GumballBp {}
 
@@ -109,6 +109,6 @@ mod gumball_tests
         test_env.new_component("gumball_comp", "gumball", "gumball", vec![]);
         test_env.call_method("gumball_comp", GumballMethods::BuyGumball(dec!(15)));
 
-        assert_eq!(test_env.get_current_account().amount_owned(test_env.get_token("gumball").unwrap()), Decimal::one());
+        assert_eq!(test_env.amount_owned_by_current("gumball"), Decimal::one());
     }
 }

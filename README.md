@@ -1,5 +1,5 @@
-# suft
-Scrypto User-Friendly Test package
+# sqrt
+The Scrypto Quick Rtm Testing package is a tool to easily test Scrypto packages using radix transaction manifests.
 
 # TODO for version 1.0
 - [ ] Deal with return of blueprint methods

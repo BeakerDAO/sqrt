@@ -3,12 +3,12 @@ mod rns_tests
 {
     use scrypto::dec;
     use scrypto::math::Decimal;
-    use suft::blueprint::Blueprint;
-    use suft::method::{Arg, Method};
-    use suft::method::Arg::{BucketArg, ComponentAddressArg, ProofArg, StringArg, U8};
-    use suft::{method_args};
-    use suft::package::Package;
-    use suft::test_environment::TestEnvironment;
+    use sqrt::blueprint::Blueprint;
+    use sqrt::method::{Arg, Method};
+    use sqrt::method::Arg::{BucketArg, ComponentAddressArg, ProofArg, StringArg, U8};
+    use sqrt::{method_args};
+    use sqrt::package::Package;
+    use sqrt::test_environment::TestEnvironment;
 
     struct RNSBp {}
 
@@ -138,8 +138,6 @@ mod rns_tests
         test_env.publish_package("rns", rns_package);
         test_env.new_component("rns_comp", "rns", "rns", vec![]);
 
-        let domain_name = test_env.get_token("DomainName").unwrap().clone();
-
         let current_account = test_env.get_current_account();
         test_env.call_method("rns_comp", RNSMethods::RegisterName(
             String::from("test.xrd"),
@@ -147,7 +145,7 @@ mod rns_tests
             1,
             dec!("15")
         ));
-        let owned_nft = test_env.get_current_account().amount_owned(&domain_name);
+        let owned_nft = test_env.amount_owned_by_current("DomainName");
         assert_eq!(owned_nft, Decimal::one());
     }
 
@@ -161,8 +159,6 @@ mod rns_tests
         test_env.publish_package("rns", rns_package);
         test_env.new_component("rns_comp", "rns", "rns", vec![]);
 
-        let domain_name = test_env.get_token("DomainName").unwrap().clone();
-
         let current_account = test_env.get_current_account();
         test_env.call_method("rns_comp", RNSMethods::RegisterName(
             String::from("test.xrd"),
@@ -170,11 +166,11 @@ mod rns_tests
             1,
             dec!("15")
         ));
-        let owned_nft = test_env.get_current_account().amount_owned(&domain_name);
+        let owned_nft = test_env.amount_owned_by_current("DomainName");
         assert_eq!(owned_nft, Decimal::one());
 
         test_env.call_method("rns_comp", RNSMethods::UnregisterName);
-        let owned_nft = test_env.get_current_account().amount_owned(&domain_name);
+        let owned_nft = test_env.amount_owned_by_current("DomainName");
         assert_eq!(owned_nft, Decimal::zero());
 
     }
@@ -189,7 +185,6 @@ mod rns_tests
         test_env.publish_package("rns", rns_package);
         test_env.new_component("rns_comp", "rns", "rns", vec![]);
 
-        let domain_name = test_env.get_token("DomainName").unwrap().clone();
         let current_account = test_env.get_current_account();
         test_env.call_method("rns_comp", RNSMethods::RegisterName(
             String::from("test.xrd"),
@@ -197,7 +192,7 @@ mod rns_tests
             1,
             dec!("15")
         ));
-        let owned_nft = test_env.get_current_account().amount_owned(&domain_name);
+        let owned_nft = test_env.amount_owned_by_current("DomainName");
         assert_eq!(owned_nft, Decimal::one());
 
         test_env.create_account("test");
@@ -218,7 +213,6 @@ mod rns_tests
         test_env.publish_package("rns", rns_package);
         test_env.new_component("rns_comp", "rns", "rns", vec![]);
 
-        let domain_name = test_env.get_token("DomainName").unwrap().clone();
         let current_account = test_env.get_current_account();
         test_env.call_method("rns_comp", RNSMethods::RegisterName(
             String::from("test.xrd"),
@@ -226,7 +220,7 @@ mod rns_tests
             1,
             dec!("15")
         ));
-        let owned_nft = test_env.get_current_account().amount_owned(&domain_name);
+        let owned_nft = test_env.amount_owned_by_current("DomainName");
         assert_eq!(owned_nft, Decimal::one());
 
         test_env.call_method("rns_comp", RNSMethods::WithdrawFees);
@@ -243,7 +237,6 @@ mod rns_tests
         test_env.publish_package("rns", rns_package);
         test_env.new_component("rns_comp", "rns", "rns", vec![]);
 
-        let domain_name = test_env.get_token("DomainName").unwrap().clone();
         let current_account = test_env.get_current_account();
         test_env.call_method("rns_comp", RNSMethods::RegisterName(
             String::from("test.xrd"),
@@ -251,7 +244,7 @@ mod rns_tests
             1,
             dec!("15")
         ));
-        let owned_nft = test_env.get_current_account().amount_owned(&domain_name);
+        let owned_nft = test_env.amount_owned_by_current("DomainName");
         assert_eq!(owned_nft, Decimal::one());
 
         test_env.create_account("test");

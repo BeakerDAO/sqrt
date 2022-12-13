@@ -1,25 +1,20 @@
 #[cfg(test)]
-mod hello_tests
-{
+mod hello_tests {
     use sqrt::blueprint::Blueprint;
     use sqrt::method::{Arg, Method};
     use sqrt::method_args;
-    use sqrt::test_environment::TestEnvironment;
     use sqrt::package::Package;
-
+    use sqrt::test_environment::TestEnvironment;
 
     struct HelloBp {}
 
-    impl Blueprint for HelloBp
-    {
-        fn instantiate(&self, _arg_values: Vec<String>) -> (&str, Vec<String>)
-        {
+    impl Blueprint for HelloBp {
+        fn instantiate(&self, _arg_values: Vec<String>) -> (&str, Vec<String>) {
             let function_name = "instantiate_hello";
             (function_name, vec![])
         }
 
-        fn name(&self) -> &str
-        {
+        fn name(&self) -> &str {
             "Hello"
         }
 
@@ -28,22 +23,18 @@ mod hello_tests
         }
     }
 
-    enum HelloMethods
-    {
-        FreeToken
+    enum HelloMethods {
+        FreeToken,
     }
 
-    impl Method for HelloMethods
-    {
+    impl Method for HelloMethods {
         fn name(&self) -> &str {
-            match self
-            {
-                HelloMethods::FreeToken => { "free_token" }
+            match self {
+                HelloMethods::FreeToken => "free_token",
             }
         }
 
-        fn args(&self) -> Option<Vec<Arg>>
-        {
+        fn args(&self) -> Option<Vec<Arg>> {
             method_args![]
         }
 
@@ -53,20 +44,18 @@ mod hello_tests
     }
 
     #[test]
-    fn test_publish()
-    {
+    fn test_publish() {
         let mut test_env = TestEnvironment::new();
-        let hello_blueprint = Box::new(HelloBp{});
+        let hello_blueprint = Box::new(HelloBp {});
         let mut hello_package = Package::new("tests/assets/hello-token/");
         hello_package.add_blueprint("hello", hello_blueprint);
         test_env.publish_package("hello", hello_package);
     }
 
     #[test]
-    fn test_instantiate()
-    {
+    fn test_instantiate() {
         let mut test_env = TestEnvironment::new();
-        let hello_blueprint = Box::new(HelloBp{});
+        let hello_blueprint = Box::new(HelloBp {});
         let mut hello_package = Package::new("tests/assets/hello-token/");
         hello_package.add_blueprint("hello", hello_blueprint);
         test_env.publish_package("hello", hello_package);
@@ -78,17 +67,14 @@ mod hello_tests
     }
 
     #[test]
-    fn test_free_token()
-    {
+    fn test_free_token() {
         let mut test_env = TestEnvironment::new();
-        let hello_blueprint = Box::new(HelloBp{});
+        let hello_blueprint = Box::new(HelloBp {});
         let mut hello_package = Package::new("tests/assets/hello-token/");
         hello_package.add_blueprint("hello", hello_blueprint);
         test_env.publish_package("hello", hello_package);
         test_env.new_component("hello_comp", "hello", "hello", vec![]);
 
         test_env.call_method("hello_comp", HelloMethods::FreeToken);
-
     }
 }
-

@@ -120,8 +120,7 @@ CALL_METHOD
     write_output(transfer_str, path, "transfer");
 }
 
-pub fn generate_owner_badge() -> String
-{
+pub fn generate_owner_badge() -> String {
     let output = run_command(Command::new("resim").arg("new-simple-badge"), false);
 
     lazy_static! {

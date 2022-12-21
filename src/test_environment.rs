@@ -3,7 +3,9 @@ use crate::component::Component;
 use crate::manifest::Manifest;
 use crate::method::Method;
 use crate::package::Package;
-use crate::utils::{create_dir, generate_owner_badge, run_command, run_manifest, transfer, write_transfer};
+use crate::utils::{
+    create_dir, generate_owner_badge, run_command, run_manifest, transfer, write_transfer,
+};
 use crate::RADIX_TOKEN;
 use lazy_static::lazy_static;
 use regex::Regex;
@@ -17,7 +19,7 @@ pub struct TestEnvironment {
     components: HashMap<String, Component>,
     current_account: String,
     tokens: HashMap<String, String>,
-    owner_badge: String
+    owner_badge: String,
 }
 
 impl TestEnvironment {
@@ -36,7 +38,7 @@ impl TestEnvironment {
             components: HashMap::new(),
             current_account: String::from("default"),
             tokens,
-            owner_badge: generate_owner_badge()
+            owner_badge: generate_owner_badge(),
         }
     }
 
@@ -86,7 +88,11 @@ impl TestEnvironment {
             }
 
             let package_output = run_command(
-                Command::new("resim").arg("publish").arg(package.path()).arg("--owner-badge").arg(self.owner_badge.clone()),
+                Command::new("resim")
+                    .arg("publish")
+                    .arg(package.path())
+                    .arg("--owner-badge")
+                    .arg(self.owner_badge.clone()),
                 false,
             );
 
@@ -131,8 +137,7 @@ impl TestEnvironment {
                     );
 
                     lazy_static! {
-                        static ref COMPONENT_RE: Regex =
-                            Regex::new(r#"Component: (\w*)"#).unwrap();
+                        static ref COMPONENT_RE: Regex = Regex::new(r#"Component: (\w*)"#).unwrap();
                     }
 
                     let component_address = &COMPONENT_RE.captures(&output).expect(&format!(

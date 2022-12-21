@@ -1,4 +1,4 @@
-use scrypto::prelude::{Decimal};
+use scrypto::prelude::Decimal;
 use std::fmt::{Display, Formatter};
 
 #[derive(Debug, Clone, PartialEq, Eq)]

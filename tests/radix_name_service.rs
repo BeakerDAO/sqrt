@@ -1,6 +1,6 @@
 #[cfg(test)]
 mod rns_tests {
-    use scrypto::prelude::{Decimal, dec};
+    use scrypto::prelude::{dec, Decimal};
     use sqrt::blueprint::Blueprint;
     use sqrt::method::Arg::{BucketArg, ComponentAddressArg, ProofArg, StringArg, U8};
     use sqrt::method::{Arg, Method};

@@ -1,7 +1,7 @@
 use crate::utils::run_command;
 use lazy_static::lazy_static;
 use regex::Regex;
-use scrypto::math::Decimal;
+use scrypto::prelude::Decimal;
 use std::collections::HashMap;
 use std::process::Command;
 
@@ -110,8 +110,8 @@ impl Account {
 #[cfg(test)]
 mod tests {
     use crate::account::Account;
+    use scrypto::prelude::{dec, Decimal};
     use std::collections::HashMap;
-    use scrypto::prelude::{Decimal, dec};
 
     #[test]
     fn test_from() {

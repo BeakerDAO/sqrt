@@ -1,6 +1,6 @@
 use crate::instructions::Instruction;
 use crate::method::{Arg, Method};
-use scrypto::math::Decimal;
+use scrypto::prelude::Decimal;
 use std::collections::HashMap;
 use std::ops::Deref;
 
@@ -98,11 +98,7 @@ impl Manifest {
         self
     }
 
-    pub fn create_proof(
-        &mut self,
-        caller_address: String,
-        resource_address: String,
-    ) -> &mut Self {
+    pub fn create_proof(&mut self, caller_address: String, resource_address: String) -> &mut Self {
         let inst_1 = Instruction::CallMethod {
             component_address: caller_address,
             method_name: "create_proof".to_string(),
@@ -304,11 +300,7 @@ impl Manifest {
                     name
                 ));
 
-                self.withdraw_by_amount(
-                    caller_address.clone(),
-                    amount.clone(),
-                    token_str.clone(),
-                );
+                self.withdraw_by_amount(caller_address.clone(), amount.clone(), token_str.clone());
                 self.take_from_worktop_by_amount(amount.clone(), token_str.clone(), self.id);
                 let ret = format!("Bucket(\"{}\")", self.id);
                 self.id += 1;

@@ -1,5 +1,4 @@
-use scrypto::math::Decimal;
-use scrypto::prelude::PreciseDecimal;
+use scrypto::prelude::{Decimal, PreciseDecimal};
 use std::collections::HashMap;
 
 pub trait Method {

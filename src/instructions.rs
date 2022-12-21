@@ -1,25 +1,22 @@
-use sbor::{Decode, Encode, TypeId};
-use scrypto::component::ComponentAddress;
-use scrypto::prelude::Decimal;
-use scrypto::resource::ResourceAddress;
+use scrypto::prelude::{Decimal};
 use std::fmt::{Display, Formatter};
 
-#[derive(Debug, Clone, TypeId, Encode, Decode, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Instruction {
     TakeFromWorktopByAmount {
         amount: Decimal,
-        resource_address: ResourceAddress,
+        resource_address: String,
         bucket_id: u32,
     },
 
     CallMethod {
-        component_address: ComponentAddress,
+        component_address: String,
         method_name: String,
         args: Vec<String>,
     },
 
     CreateProofFromAuthZone {
-        resource_address: ResourceAddress,
+        resource_address: String,
         proof_id: u32,
     },
 

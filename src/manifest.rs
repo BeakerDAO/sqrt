@@ -1,10 +1,8 @@
 use crate::instructions::Instruction;
 use crate::method::{Arg, Method};
 use scrypto::math::Decimal;
-use scrypto::prelude::{ComponentAddress, ResourceAddress};
 use std::collections::HashMap;
 use std::ops::Deref;
-use std::str::FromStr;
 
 pub struct Manifest {
     needed_resources: Vec<Instruction>,
@@ -26,8 +24,8 @@ impl Manifest {
     pub fn call_method<M>(
         &mut self,
         method: &M,
-        component_address: ComponentAddress,
-        caller_address: ComponentAddress,
+        component_address: String,
+        caller_address: String,
         tokens: &HashMap<String, String>,
     ) -> &mut Self
     where
@@ -54,7 +52,7 @@ impl Manifest {
         self
     }
 
-    pub fn lock_fee(&mut self, caller_address: ComponentAddress, amount: Decimal) -> &mut Self {
+    pub fn lock_fee(&mut self, caller_address: String, amount: Decimal) -> &mut Self {
         let inst = Instruction::CallMethod {
             component_address: caller_address,
             method_name: "lock_fee".to_string(),
@@ -68,7 +66,7 @@ impl Manifest {
     fn take_from_worktop_by_amount(
         &mut self,
         amount: Decimal,
-        resource_address: ResourceAddress,
+        resource_address: String,
         bucket_id: u32,
     ) -> &mut Self {
         let inst = Instruction::TakeFromWorktopByAmount {
@@ -83,9 +81,9 @@ impl Manifest {
 
     fn withdraw_by_amount(
         &mut self,
-        caller_address: ComponentAddress,
+        caller_address: String,
         amount: Decimal,
-        resource_address: ResourceAddress,
+        resource_address: String,
     ) -> &mut Self {
         let inst = Instruction::CallMethod {
             component_address: caller_address,
@@ -102,8 +100,8 @@ impl Manifest {
 
     pub fn create_proof(
         &mut self,
-        caller_address: ComponentAddress,
-        resource_address: ResourceAddress,
+        caller_address: String,
+        resource_address: String,
     ) -> &mut Self {
         let inst_1 = Instruction::CallMethod {
             component_address: caller_address,
@@ -117,8 +115,8 @@ impl Manifest {
 
     pub fn create_usable_proof(
         &mut self,
-        caller_address: ComponentAddress,
-        resource_address: ResourceAddress,
+        caller_address: String,
+        resource_address: String,
         proof_id: u32,
     ) -> &mut Self {
         self.create_proof(caller_address, resource_address.clone());
@@ -133,7 +131,7 @@ impl Manifest {
         self
     }
 
-    pub fn deposit_batch(&mut self, caller_address: ComponentAddress) -> &mut Self {
+    pub fn deposit_batch(&mut self, caller_address: String) -> &mut Self {
         let inst = Instruction::CallMethod {
             component_address: caller_address,
             method_name: "deposit_batch".to_string(),
@@ -169,7 +167,7 @@ impl Manifest {
     fn deal_with_arg(
         &mut self,
         arg: &Arg,
-        caller_address: &ComponentAddress,
+        caller_address: &String,
         tokens: &HashMap<String, String>,
     ) -> String {
         match arg {
@@ -305,15 +303,13 @@ impl Manifest {
                     "Could not find token {} in the list of tokens",
                     name
                 ));
-                let token_address = ResourceAddress::from_str(token_str)
-                    .expect("Error! The recorder address of the token is faulty!");
 
                 self.withdraw_by_amount(
                     caller_address.clone(),
                     amount.clone(),
-                    token_address.clone(),
+                    token_str.clone(),
                 );
-                self.take_from_worktop_by_amount(amount.clone(), token_address, self.id);
+                self.take_from_worktop_by_amount(amount.clone(), token_str.clone(), self.id);
                 let ret = format!("Bucket(\"{}\")", self.id);
                 self.id += 1;
                 ret
@@ -323,10 +319,7 @@ impl Manifest {
                     "Could not find token {} in the list of tokens",
                     name
                 ));
-                let token_address = ResourceAddress::from_str(token_str)
-                    .expect("Error! The recorder address of the token is faulty!");
-
-                self.create_usable_proof(caller_address.clone(), token_address, self.id);
+                self.create_usable_proof(caller_address.clone(), token_str.clone(), self.id);
                 let ret = format!("Proof(\"{}\")", self.id);
                 self.id += 1;
                 self.has_proofs = true;
@@ -342,7 +335,7 @@ impl Manifest {
     fn deal_with_arg_vec(
         &mut self,
         vec: &Vec<Arg>,
-        caller_address: &ComponentAddress,
+        caller_address: &String,
         tokens: &HashMap<String, String>,
     ) -> String {
         let mut vec_str = String::new();

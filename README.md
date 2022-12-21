@@ -10,6 +10,11 @@ The Scrypto Quick Rtm Testing package is a tool to easily test Scrypto packages 
 - [ ] Deal with returns and automatically check how things should have evolved
 - [ ] Automatic implementation of method trait 
 
+# Known Bugs
+
+- [ ] When multiple components are instantiated at the same time, the library will fail to understand which component 
+is bounded to which address.
+
 # Usage
 To use this library, for every blueprint that you want to test, create an empty struct and implement the `Blueprint` 
 trait for it. This trait basically explains how the blueprint should be instantiated.

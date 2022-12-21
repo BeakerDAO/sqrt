@@ -3,16 +3,13 @@ use crate::component::Component;
 use crate::manifest::Manifest;
 use crate::method::Method;
 use crate::package::Package;
-use crate::utils::{create_dir, run_command, run_manifest, transfer, write_transfer};
+use crate::utils::{create_dir, generate_owner_badge, run_command, run_manifest, transfer, write_transfer};
 use crate::RADIX_TOKEN;
 use lazy_static::lazy_static;
 use regex::Regex;
-use scrypto::dec;
-use scrypto::math::Decimal;
-use scrypto::prelude::{ComponentAddress, ResourceAddress};
+use scrypto::prelude::{dec, Decimal};
 use std::collections::HashMap;
 use std::process::Command;
-use std::str::FromStr;
 
 pub struct TestEnvironment {
     accounts: HashMap<String, Account>,
@@ -20,6 +17,7 @@ pub struct TestEnvironment {
     components: HashMap<String, Component>,
     current_account: String,
     tokens: HashMap<String, String>,
+    owner_badge: String
 }
 
 impl TestEnvironment {
@@ -31,12 +29,14 @@ impl TestEnvironment {
         accounts.insert(String::from("default"), default_account);
         let mut tokens = HashMap::new();
         tokens.insert(String::from("radix"), String::from(RADIX_TOKEN));
+
         TestEnvironment {
             accounts,
             packages: HashMap::new(),
             components: HashMap::new(),
             current_account: String::from("default"),
             tokens,
+            owner_badge: generate_owner_badge()
         }
     }
 
@@ -86,7 +86,7 @@ impl TestEnvironment {
             }
 
             let package_output = run_command(
-                Command::new("resim").arg("publish").arg(package.path()),
+                Command::new("resim").arg("publish").arg(package.path()).arg("--owner-badge").arg(self.owner_badge.clone()),
                 false,
             );
 
@@ -132,7 +132,7 @@ impl TestEnvironment {
 
                     lazy_static! {
                         static ref COMPONENT_RE: Regex =
-                            Regex::new(r#"ComponentAddress\("(\w*)"\)"#).unwrap();
+                            Regex::new(r#"Component: (\w*)"#).unwrap();
                     }
 
                     let component_address = &COMPONENT_RE.captures(&output).expect(&format!(
@@ -184,8 +184,7 @@ impl TestEnvironment {
     where
         M: Method,
     {
-        let account_comp = ComponentAddress::from_str(self.get_current_account().address())
-            .expect("Fatal Error: The stored address of the current account is faulty!");
+        let account_comp = String::from(self.get_current_account().address());
 
         let output;
         match self.components.get_mut(component) {
@@ -193,24 +192,19 @@ impl TestEnvironment {
                 panic!("No component with name {}", component)
             }
             Some(comp) => {
-                let component_address = ComponentAddress::from_str(comp.address())
-                    .expect("Fatal Error: The stored address of the given component is faulty!");
-
+                let component_address = String::from(comp.address());
                 let mut manifest = Manifest::new();
                 manifest.lock_fee(account_comp.clone(), dec!(100));
 
                 if method.needs_admin_badge() {
-                    let raw_address = match comp.admin_badge() {
+                    let badge_address = match comp.admin_badge() {
                         None => {
                             panic!("The component does not have an admin badge!")
                         }
                         Some(str) => str,
                     };
 
-                    let badge_address = ResourceAddress::from_str(raw_address)
-                        .expect("Fatal Error: The stored admin badge address is faulty!");
-
-                    manifest.create_proof(account_comp.clone(), badge_address);
+                    manifest.create_proof(account_comp.clone(), badge_address.clone());
                 }
 
                 let method_name = method.name();

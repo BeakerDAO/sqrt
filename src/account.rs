@@ -110,8 +110,8 @@ impl Account {
 #[cfg(test)]
 mod tests {
     use crate::account::Account;
-    use scrypto::dec;
     use std::collections::HashMap;
+    use scrypto::prelude::{Decimal, dec};
 
     #[test]
     fn test_from() {

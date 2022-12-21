@@ -1,7 +1,6 @@
 #[cfg(test)]
 mod gumball_tests {
-    use scrypto::dec;
-    use scrypto::prelude::Decimal;
+    use scrypto::prelude::{Decimal, dec};
     use sqrt::blueprint::Blueprint;
     use sqrt::method::{Arg, Method};
     use sqrt::method_args;

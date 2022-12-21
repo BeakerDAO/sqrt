@@ -6,9 +6,9 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-scrypto = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v0.6.0" }
-transaction = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v0.6.0" }
-sbor = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v0.6.0" }
+scrypto = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v0.7.0" }
+sbor = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v0.7.0" }
+utils = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v0.7.0"}
 regex = "1"
 lazy_static = "1.4.0"
 

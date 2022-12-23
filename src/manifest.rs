@@ -29,14 +29,11 @@ impl Manifest {
         M: Method,
     {
         let mut args_vec: Vec<String> = Vec::new();
-        let caller_arg = format!("caller_address");
-        let component_address_arg = format!("component_address");
 
-        self.lock_fee(caller_arg.clone(), dec!(100));
+        self.lock_fee(Self::caller_binding(), dec!(100));
         if method.needs_admin_badge()
         {
-            let badge_arg = format!("badge_address");
-            self.create_proof(caller_arg.clone(), badge_arg);
+            self.create_proof(Self::caller_binding(), Self::admin_badge_binding());
         }
 
         match method.args() {
@@ -49,7 +46,7 @@ impl Manifest {
                             {
                                 let amount_arg = format!("arg_{}_amount",self.arg_count);
                                 let resource_arg = format!("arg_{}_resource", self.arg_count);
-                                self.withdraw_by_amount(caller_arg.clone(), amount_arg.clone(), resource_arg.clone());
+                                self.withdraw_by_amount(Self::caller_binding(), amount_arg.clone(), resource_arg.clone());
                                 self.take_from_worktop_by_amount(amount_arg, resource_arg, self.id);
                                 let ret = format!("Bucket(\"{}\")", self.id);
                                 self.id += 1;
@@ -58,7 +55,7 @@ impl Manifest {
                         Arg::ProofArg(_) =>
                             {
                                 let resource_arg = format!("arg_{}", self.arg_count);
-                                self.create_usable_proof(caller_arg.clone(), resource_arg, self.id);
+                                self.create_usable_proof(Self::caller_binding(), resource_arg, self.id);
                                 let ret = format!("Proof(\"{}\")", self.id);
                                 self.id += 1;
                                 self.has_proofs = true;
@@ -75,14 +72,14 @@ impl Manifest {
         }
 
         let inst = Instruction::CallMethod {
-            component_address_generic: component_address_arg,
+            component_address_generic: Self::component_binding(),
             method_name: method.name().to_string(),
             args: args_vec,
         };
 
         self.instructions.push(inst);
         self.drop_proofs();
-        self.deposit_batch(caller_arg);
+        self.deposit_batch(Self::caller_binding());
         self
     }
 
@@ -193,6 +190,22 @@ impl Manifest {
 
         output
     }
+
+    pub fn caller_binding() -> String
+    {
+        String::from("caller_address")
+    }
+
+    pub fn component_binding() -> String
+    {
+        String::from("component_address")
+    }
+
+    pub fn admin_badge_binding() -> String
+    {
+        String::from("badge_address")
+    }
+
 /*
     fn deal_with_arg(
         arg: &Arg,

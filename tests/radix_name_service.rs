@@ -173,7 +173,6 @@ mod rns_tests {
         assert_eq!(owned_nft, Decimal::one());
 
         test_env.create_account("test");
-        let account = test_env.get_account("test").unwrap();
         test_env.call_method(
             "rns_comp",
             RNSMethods::UpdateAddress(String::from("test"), dec!("15")),

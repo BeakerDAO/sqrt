@@ -202,10 +202,10 @@ impl TestEnvironment {
                 let account_comp = String::from(self.get_current_account().address());
 
                 let mut env_binding = vec![];
-                env_binding.push((String::from("caller_address"), account_comp));
-                env_binding.push((String::from("component_address"), component_address));
+                env_binding.push((Manifest::caller_binding(), account_comp));
+                env_binding.push((Manifest::component_binding(), component_address));
                 if method.needs_admin_badge() {
-                    env_binding.push((String::from("badge_address"), comp.admin_badge().as_ref().unwrap().clone()))
+                    env_binding.push((Manifest::admin_badge_binding(), comp.admin_badge().as_ref().unwrap().clone()))
                 }
 
                 let mut arg_count = 0u32;
@@ -215,78 +215,10 @@ impl TestEnvironment {
                     Some(args) => {
                         for arg in args
                         {
-                            let arg_name = format!("arg_{}", arg_count);
-
                             match arg
                             {
                                 Arg::Unit => {},
-                                Arg::ComponentAddressArg(name) =>
-                                    {
-                                        let component_value = match self.get_component(&name)
-                                        {
-                                            None => { panic!("No components with name {}", name) }
-                                            Some(comp) => { String::from(comp) }
-                                        };
-                                        env_binding.push((arg_name, component_value));
-                                    }
-                                Arg::AccountAddressArg(name) =>
-                                    {
-                                        let account_value = match self.get_account(&name)
-                                        {
-                                            None => { panic!("No account with name {}", name) }
-                                            Some(account) => { String::from(account.address()) }
-                                        };
-                                        env_binding.push((arg_name, account_value))
-                                    }
-                                Arg::PackageAddressArg(name) =>
-                                    {
-                                        let package_value = match self.packages.get(&name)
-                                        {
-                                            None => { panic!("No package with name {}", name) }
-                                            Some(package) => { String::from(package.address()) }
-                                        };
-                                        env_binding.push((arg_name, package_value));
-                                    }
-                                Arg::ResourceAddressArg(name) =>
-                                    {
-                                        let resource_value = match self.get_token(&name)
-                                        {
-                                            None => { panic!("No tokens with name {}", name) }
-                                            Some(address) => {address.clone()}
-                                        };
-                                        env_binding.push((arg_name, resource_value));
-                                    }
-                                Arg::NonFungibleAddressArg(name) =>
-                                    {
-                                        let resource_value = match self.get_token(&name)
-                                        {
-                                            None => { panic!("No tokens with name {}", name) }
-                                            Some(address) => {address.clone()}
-                                        };
-                                        env_binding.push((arg_name, resource_value));
-                                    }
-                                Arg::BucketArg(resource_address, amount) =>
-                                    {
-                                        let resource_arg_name = format!("{}_resource", arg_name);
-                                        let amount_arg_name = format!("{}_amount", arg_name);
-                                        let resource_value = match self.get_token(&resource_address)
-                                        {
-                                            None => { panic!("No tokens with name {}", resource_address) }
-                                            Some(address) => {address.clone()}
-                                        };
-                                        env_binding.push((resource_arg_name, resource_value));
-                                        env_binding.push((amount_arg_name, amount.to_string()));
-                                    }
-                                Arg::ProofArg(resource_address) =>
-                                    {
-                                        let resource_value = match self.get_token(&resource_address)
-                                        {
-                                            None => { panic!("No tokens with name {}", resource_address) }
-                                            Some(address) => {address.clone()}
-                                        };
-                                        env_binding.push((arg_name, resource_value));
-                                    }
-                                _ => { env_binding.push((arg_name,arg.value())); }
+                                _ => { self.add_binding_for(&arg, arg_count, &mut env_binding); }
                             }
                             arg_count+=1;
                         }
@@ -454,5 +386,92 @@ impl TestEnvironment {
         manifest.call_method(method);
         let manifest_string = manifest.build();
         write_manifest(manifest_string, path, method.name());
+    }
+
+    fn add_binding_for(&self, arg: &Arg, arg_count: u32, bindings: &mut Vec<(String,String)>)
+    {
+        let mut arg_name = format!("arg_{}", arg_count);
+        let arg_value = match arg {
+            Arg::Unit => { panic!("Should not happen") }
+            Arg::Bool(value) => { format!("{}", *value) }
+            Arg::I8(int) => { format!("{}", *int)}
+            Arg::I16(int) => { format!("{}", *int)}
+            Arg::I32(int) => { format!("{}", *int)}
+            Arg::I64(int) => { format!("{}", *int)}
+            Arg::I128(int) => { format!("{}", *int)}
+            Arg::U8(uint) => { format!("{}", *uint) }
+            Arg::U16(uint) => { format!("{}", *uint) }
+            Arg::U32(uint) => { format!("{}", *uint) }
+            Arg::U64(uint) => { format!("{}", *uint) }
+            Arg::U128(uint) => { format!("{}", *uint) }
+            Arg::StringArg(string) => { format!("{}", string) }
+            Arg::DecimalArg(value) => { format!("{}", *value) }
+            Arg::PreciseDecimalArg(value) => { format!("{}", *value) }
+            Arg::PackageAddressArg(name) =>
+                {
+                    match self.packages.get(name)
+                    {
+                        None => { panic!("No package with name {}", name) }
+                        Some(package) => { String::from(package.address()) }
+                    }
+                }
+            Arg::ComponentAddressArg(name) =>
+                {
+                    match self.get_component(&name)
+                    {
+                        None => { panic!("No components with name {}", name) }
+                        Some(comp) => { String::from(comp) }
+                    }
+                }
+            Arg::AccountAddressArg(name) =>
+                {
+                    match self.get_account(&name)
+                    {
+                        None => { panic!("No account with name {}", name) }
+                        Some(account) => { String::from(account.address()) }
+                    }
+                }
+
+            Arg::ResourceAddressArg(name) =>
+                {
+                    match self.get_token(&name)
+                    {
+                        None => { panic!("No tokens with name {}", name) }
+                        Some(address) => {address.clone()}
+                    }
+                }
+            Arg::NonFungibleAddressArg(name) =>
+                {
+                    match self.get_token(&name)
+                    {
+                        None => { panic!("No tokens with name {}", name) }
+                        Some(address) => { address.clone() }
+                    }
+                }
+            Arg::BucketArg(resource_address, amount) =>
+                {
+                    let resource_arg_name = format!("{}_resource", arg_name);
+                    let resource_value = match self.get_token(&resource_address)
+                    {
+                        None => { panic!("No tokens with name {}", resource_address) }
+                        Some(address) => {address.clone()}
+                    };
+                    bindings.push((resource_arg_name, resource_value));
+
+                    arg_name = format!("{}_amount", arg_name);
+                    amount.to_string()
+                }
+            Arg::ProofArg(resource_address) =>
+                {
+                    match self.get_token(&resource_address)
+                    {
+                        None => { panic!("No tokens with name {}", resource_address) }
+                        Some(address) => { address.clone() }
+                    }
+                }
+            Arg::NonFungibleIdArg(value) => { format!("{}", *value) }
+            Arg::Struct(_, _)| Arg::OptionArg(_, _)| Arg::BoxArg(_)| Arg::TupleArg(_)| Arg::ResultArg(_, _, _)| Arg::VecArg(_)| Arg::HashMapArg(_, _, _)| Arg::HashArg(_) => { todo!() }
+        };
+        bindings.push((arg_name, arg_value));
     }
 }

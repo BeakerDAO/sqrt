@@ -174,46 +174,6 @@ impl Arg {
                 }
         }
     }
-
-    pub fn value(&self) -> String
-    {
-        match self {
-            Arg::Unit => { format!("()") }
-            Arg::Bool(value) => { format!("{}", *value) }
-            Arg::I8(int) => { format!("{}", *int)}
-            Arg::I16(int) => { format!("{}", *int)}
-            Arg::I32(int) => { format!("{}", *int)}
-            Arg::I64(int) => { format!("{}", *int)}
-            Arg::I128(int) => { format!("{}", *int)}
-            Arg::U8(uint) => { format!("{}", *uint) }
-            Arg::U16(uint) => { format!("{}", *uint) }
-            Arg::U32(uint) => { format!("{}", *uint) }
-            Arg::U64(uint) => { format!("{}", *uint) }
-            Arg::U128(uint) => { format!("{}", *uint) }
-            Arg::StringArg(string) => { format!("{}", string) }
-            Arg::Struct(_, _) => { todo!() }
-            Arg::OptionArg(_, value) =>
-                {
-                    match value
-                    {
-                        None => { String::from("None") }
-                        Some(box_arg) => { box_arg.value() }
-                    }
-                }
-            Arg::BoxArg(_)| Arg::TupleArg(_)| Arg::ResultArg(_, _, _)| Arg::VecArg(_)| Arg::HashMapArg(_, _, _) => { todo!() }
-            Arg::DecimalArg(value) => { format!("{}", *value) }
-            Arg::PreciseDecimalArg(value) => { format!("{}", *value) }
-            Arg::PackageAddressArg(_) => { panic!("Should not happen") }
-            Arg::ComponentAddressArg(_) => { panic!("Should not happen") }
-            Arg::AccountAddressArg(_) => { panic!("Should not happen") }
-            Arg::ResourceAddressArg(_) => { panic!("Should not happen") }
-            Arg::NonFungibleAddressArg(_) => { panic!("Should not happen") }
-            Arg::HashArg(_) => { todo!() }
-            Arg::BucketArg(_, _) => { panic!("Should not happen")}
-            Arg::ProofArg(_) => { panic!("Should not happen") }
-            Arg::NonFungibleIdArg(value) => { format!("{}", *value) }
-        }
-    }
 }
 
 #[macro_export]

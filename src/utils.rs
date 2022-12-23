@@ -1,4 +1,3 @@
-use crate::manifest::Manifest;
 use lazy_static::lazy_static;
 use regex::Regex;
 use std::fs::{File, OpenOptions};
@@ -16,18 +15,18 @@ pub fn run_command(command: &mut Command, is_transaction: bool) -> String {
         static ref SUCCESS_RE: Regex = Regex::new("Transaction Status: COMMITTED SUCCESS").unwrap();
     }
 
-    if is_transaction && !SUCCESS_RE.is_match(&stdout) {
-        panic!("stdout:\n{}", stdout);
-    }
-
     if !output.status.success() {
         println!("stdout:\n{}", stdout);
         panic!("{}", stderr);
     }
+
+    if is_transaction && !SUCCESS_RE.is_match(&stdout) {
+        panic!("stdout:\n{}", stdout);
+    }
     stdout
 }
 
-pub fn write_output(output: String, path: &str, filename: &str) -> String {
+pub fn write_manifest(output: String, path: &str, filename: &str) -> String {
     let current_dir = env::current_dir().expect("Could not find current directory");
     let path = format!(
         "{}/{}/rtm/{}{}",
@@ -69,10 +68,17 @@ pub fn create_dir(path: &str) {
     fs::create_dir_all(&new_path).expect("Something went wrong when trying to create rtm path");
 }
 
-pub fn run_manifest(manifest: Manifest, path: &str, name: &str) -> String {
-    let output = manifest.build();
-    let path = write_output(output, path, name);
-    run_command(Command::new("resim").arg("run").arg(path), true)
+pub fn run_manifest(package_path: &str, name: &str, env_variables_binding: Vec<(String,String)>) -> String {
+    let current_dir = env::current_dir().expect("Could not find current directory");
+    let path = format!(
+        "{}/{}/rtm/{}{}",
+        current_dir.display(),
+        package_path,
+        name,
+        ".rtm"
+    );
+    run_command(
+        Command::new("resim").arg("run").arg(path).envs(env_variables_binding), true)
 }
 
 pub fn transfer(from: &str, to: &str, asset: &str, amount: &str) -> String {
@@ -86,6 +92,19 @@ pub fn transfer(from: &str, to: &str, asset: &str, amount: &str) -> String {
             .env("amount", amount),
         true,
     )
+}
+
+pub fn manifest_exists(method_name: &str, path: &str) -> bool
+{
+    let current_dir = env::current_dir().expect("Could not find current directory");
+    let path = format!(
+        "{}/{}/rtm/{}{}",
+        current_dir.display(),
+        path,
+        method_name,
+        ".rtm"
+    );
+    Path::new(&path).exists()
 }
 
 pub fn write_transfer(path: &str) {
@@ -117,7 +136,7 @@ CALL_METHOD
     Expression("ENTIRE_WORKTOP");"#,
     );
 
-    write_output(transfer_str, path, "transfer");
+    write_manifest(transfer_str, path, "transfer");
 }
 
 pub fn generate_owner_badge() -> String {

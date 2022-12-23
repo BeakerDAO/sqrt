@@ -1,14 +1,13 @@
 use crate::instructions::Instruction;
 use crate::method::{Arg, Method};
-use scrypto::prelude::Decimal;
-use std::collections::HashMap;
-use std::ops::Deref;
+use scrypto::prelude::{dec, Decimal};
 
 pub struct Manifest {
     needed_resources: Vec<Instruction>,
     instructions: Vec<Instruction>,
     id: u32,
     has_proofs: bool,
+    arg_count: u32
 }
 
 impl Manifest {
@@ -18,43 +17,78 @@ impl Manifest {
             instructions: Vec::new(),
             id: 0,
             has_proofs: false,
+            arg_count: 0
         }
     }
 
     pub fn call_method<M>(
         &mut self,
         method: &M,
-        component_address: String,
-        caller_address: String,
-        tokens: &HashMap<String, String>,
     ) -> &mut Self
     where
         M: Method,
     {
         let mut args_vec: Vec<String> = Vec::new();
+        let caller_arg = format!("caller_address");
+        let component_address_arg = format!("component_address");
+
+        self.lock_fee(caller_arg.clone(), dec!(100));
+        if method.needs_admin_badge()
+        {
+            let badge_arg = format!("badge_address");
+            self.create_proof(caller_arg.clone(), badge_arg);
+        }
 
         match method.args() {
             None => {}
             Some(args) => {
                 for arg in args {
-                    args_vec.push(self.deal_with_arg(&arg, &caller_address, &tokens));
+                    match arg
+                    {
+                        Arg::BucketArg(_,_) =>
+                            {
+                                let amount_arg = format!("arg_{}_amount",self.arg_count);
+                                let resource_arg = format!("arg_{}_resource", self.arg_count);
+                                self.withdraw_by_amount(caller_arg.clone(), amount_arg.clone(), resource_arg.clone());
+                                self.take_from_worktop_by_amount(amount_arg, resource_arg, self.id);
+                                let ret = format!("Bucket(\"{}\")", self.id);
+                                self.id += 1;
+                                args_vec.push(ret);
+                            }
+                        Arg::ProofArg(_) =>
+                            {
+                                let resource_arg = format!("arg_{}", self.arg_count);
+                                self.create_usable_proof(caller_arg.clone(), resource_arg, self.id);
+                                let ret = format!("Proof(\"{}\")", self.id);
+                                self.id += 1;
+                                self.has_proofs = true;
+                                args_vec.push(ret);
+                            }
+                        _ =>
+                            {
+                                args_vec.push(arg.to_generic(self.arg_count));
+                            }
+                    }
+                    self.arg_count+=1;
                 }
             }
         }
 
         let inst = Instruction::CallMethod {
-            component_address,
+            component_address_generic: component_address_arg,
             method_name: method.name().to_string(),
             args: args_vec,
         };
 
         self.instructions.push(inst);
+        self.drop_proofs();
+        self.deposit_batch(caller_arg);
         self
     }
 
-    pub fn lock_fee(&mut self, caller_address: String, amount: Decimal) -> &mut Self {
+    pub fn lock_fee(&mut self, caller_arg: String, amount: Decimal) -> &mut Self {
         let inst = Instruction::CallMethod {
-            component_address: caller_address,
+            component_address_generic: caller_arg,
             method_name: "lock_fee".to_string(),
             args: vec![format!("Decimal(\"{}\")", amount)],
         };
@@ -65,14 +99,14 @@ impl Manifest {
 
     fn take_from_worktop_by_amount(
         &mut self,
-        amount: Decimal,
-        resource_address: String,
+        amount_arg: String,
+        resource_address_arg: String,
         bucket_id: u32,
     ) -> &mut Self {
         let inst = Instruction::TakeFromWorktopByAmount {
-            amount,
-            resource_address,
-            bucket_id,
+            amount_generic: amount_arg,
+            resource_address_generic: resource_address_arg,
+            bucket_id
         };
         self.needed_resources.push(inst);
 
@@ -81,16 +115,16 @@ impl Manifest {
 
     fn withdraw_by_amount(
         &mut self,
-        caller_address: String,
-        amount: Decimal,
-        resource_address: String,
+        account_arg: String,
+        amount_arg: String,
+        resource_address_arg: String,
     ) -> &mut Self {
         let inst = Instruction::CallMethod {
-            component_address: caller_address,
+            component_address_generic: account_arg,
             method_name: "withdraw_by_amount".to_string(),
             args: vec![
-                format!("Decimal(\"{}\")", amount),
-                format!("ResourceAddress(\"{}\")", resource_address),
+                format!("Decimal(\"${{{}}}\")", amount_arg),
+                format!("ResourceAddress(\"${{{}}}\")", resource_address_arg),
             ],
         };
         self.needed_resources.push(inst);
@@ -98,11 +132,11 @@ impl Manifest {
         self
     }
 
-    pub fn create_proof(&mut self, caller_address: String, resource_address: String) -> &mut Self {
+    pub fn create_proof(&mut self, account_arg: String, resource_address_arg: String) -> &mut Self {
         let inst_1 = Instruction::CallMethod {
-            component_address: caller_address,
+            component_address_generic: account_arg,
             method_name: "create_proof".to_string(),
-            args: vec![format!("ResourceAddress(\"{}\")", resource_address)],
+            args: vec![format!("ResourceAddress(\"${{{}}}\")", resource_address_arg)],
         };
         self.needed_resources.push(inst_1);
 
@@ -111,14 +145,14 @@ impl Manifest {
 
     pub fn create_usable_proof(
         &mut self,
-        caller_address: String,
-        resource_address: String,
+        account_arg: String,
+        resource_address_arg: String,
         proof_id: u32,
     ) -> &mut Self {
-        self.create_proof(caller_address, resource_address.clone());
+        self.create_proof(account_arg, resource_address_arg.clone());
 
         let inst = Instruction::CreateProofFromAuthZone {
-            resource_address,
+            resource_address_generic: resource_address_arg,
             proof_id,
         };
 
@@ -127,9 +161,9 @@ impl Manifest {
         self
     }
 
-    pub fn deposit_batch(&mut self, caller_address: String) -> &mut Self {
+    pub fn deposit_batch(&mut self, account_arg: String) -> &mut Self {
         let inst = Instruction::CallMethod {
-            component_address: caller_address,
+            component_address_generic: account_arg,
             method_name: "deposit_batch".to_string(),
             args: vec![String::from("Expression(\"ENTIRE_WORKTOP\")")],
         };
@@ -159,54 +193,52 @@ impl Manifest {
 
         output
     }
-
+/*
     fn deal_with_arg(
-        &mut self,
         arg: &Arg,
-        caller_address: &String,
-        tokens: &HashMap<String, String>,
+        arg_nb: u8
     ) -> String {
         match arg {
             Arg::Unit => {
                 format!("()")
             }
-            Arg::Bool(b) => {
+            Arg::Bool(_) => {
                 format!("{}", b)
             }
-            Arg::I8(int) => {
+            Arg::I8(_) => {
                 format!("{}i8", int)
             }
-            Arg::I16(int) => {
+            Arg::I16(_) => {
                 format!("{}i16", int)
             }
-            Arg::I32(int) => {
+            Arg::I32(_) => {
                 format!("{}i32", int)
             }
-            Arg::I64(int) => {
+            Arg::I64(_) => {
                 format!("{}i64", int)
             }
-            Arg::I128(int) => {
+            Arg::I128(_) => {
                 format!("{}i128", int)
             }
-            Arg::U8(uint) => {
+            Arg::U8(_) => {
                 format!("{}u8", uint)
             }
-            Arg::U16(uint) => {
+            Arg::U16(_) => {
                 format!("{}u16", uint)
             }
-            Arg::U32(uint) => {
+            Arg::U32(_) => {
                 format!("{}u32", uint)
             }
-            Arg::U64(uint) => {
+            Arg::U64(_) => {
                 format!("{}u64", uint)
             }
-            Arg::U128(uint) => {
+            Arg::U128(_) => {
                 format!("{}u128", uint)
             }
-            Arg::StringArg(str) => {
+            Arg::StringArg(_) => {
                 format!("\"{}\"", str)
             }
-            Arg::Struct(_, fields) => {
+            Arg::Struct(_, _) => {
                 format!(
                     "Struct({})",
                     self.deal_with_arg_vec(fields, caller_address, tokens)
@@ -342,4 +374,6 @@ impl Manifest {
         vec_str.pop();
         vec_str
     }
+
+ */
 }

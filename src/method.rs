@@ -38,6 +38,7 @@ pub enum Arg {
     PreciseDecimalArg(PreciseDecimal),
     PackageAddressArg(String),
     ComponentAddressArg(String),
+    AccountAddressArg(String),
     ResourceAddressArg(String),
     NonFungibleAddressArg(String),
     HashArg(String),
@@ -126,6 +127,9 @@ impl Arg {
             Arg::ComponentAddressArg(_) => {
                 format!("ComponentAddress")
             }
+            Arg::AccountAddressArg(_) => {
+                format!("ComponentAddress")
+            }
             Arg::ResourceAddressArg(_) => {
                 format!("ResourceAddress")
             }
@@ -144,6 +148,70 @@ impl Arg {
             Arg::NonFungibleIdArg(_) => {
                 format!("NonFungibleId")
             }
+        }
+    }
+
+    pub fn to_generic(&self, arg_count: u32) -> String
+    {
+        let generic = format!("${{arg_{}}}", arg_count);
+        match self {
+            Arg::Unit => { format!("()") }
+            Arg::Bool(_) => { generic }
+            Arg::I8(_)| Arg::I16(_)| Arg::I32(_)| Arg::I64(_)| Arg::I128(_)| Arg::U8(_)| Arg::U16(_)| Arg::U32(_)| Arg::U64(_)| Arg::U128(_) =>
+                {
+                    format!("{}{}", generic, self.get_type())
+                }
+            Arg::StringArg(_) => { format!("\"{}\"", generic) }
+            Arg::Struct(_, _) => { format!("Struct({})", generic) }
+            Arg::OptionArg(_, _) => { generic }
+            Arg::BoxArg(_)|Arg::TupleArg(_) | Arg::ResultArg(_, _, _)| Arg::VecArg(_)| Arg::HashMapArg(_, _, _)  | Arg::HashArg(_) | Arg::BucketArg(_, _) | Arg::ProofArg(_) | Arg::NonFungibleIdArg(_) =>
+                {
+                    format!("{}({})", self.get_type(), generic)
+                }
+            Arg::DecimalArg(_) | Arg::PreciseDecimalArg(_) | Arg::PackageAddressArg(_) | Arg::ComponentAddressArg(_) | Arg::AccountAddressArg(_) | Arg::ResourceAddressArg(_) | Arg::NonFungibleAddressArg(_) =>
+                {
+                    format!("{}(\"{}\")", self.get_type(), generic)
+                }
+        }
+    }
+
+    pub fn value(&self) -> String
+    {
+        match self {
+            Arg::Unit => { format!("()") }
+            Arg::Bool(value) => { format!("{}", *value) }
+            Arg::I8(int) => { format!("{}", *int)}
+            Arg::I16(int) => { format!("{}", *int)}
+            Arg::I32(int) => { format!("{}", *int)}
+            Arg::I64(int) => { format!("{}", *int)}
+            Arg::I128(int) => { format!("{}", *int)}
+            Arg::U8(uint) => { format!("{}", *uint) }
+            Arg::U16(uint) => { format!("{}", *uint) }
+            Arg::U32(uint) => { format!("{}", *uint) }
+            Arg::U64(uint) => { format!("{}", *uint) }
+            Arg::U128(uint) => { format!("{}", *uint) }
+            Arg::StringArg(string) => { format!("{}", string) }
+            Arg::Struct(_, _) => { todo!() }
+            Arg::OptionArg(_, value) =>
+                {
+                    match value
+                    {
+                        None => { String::from("None") }
+                        Some(box_arg) => { box_arg.value() }
+                    }
+                }
+            Arg::BoxArg(_)| Arg::TupleArg(_)| Arg::ResultArg(_, _, _)| Arg::VecArg(_)| Arg::HashMapArg(_, _, _) => { todo!() }
+            Arg::DecimalArg(value) => { format!("{}", *value) }
+            Arg::PreciseDecimalArg(value) => { format!("{}", *value) }
+            Arg::PackageAddressArg(_) => { panic!("Should not happen") }
+            Arg::ComponentAddressArg(_) => { panic!("Should not happen") }
+            Arg::AccountAddressArg(_) => { panic!("Should not happen") }
+            Arg::ResourceAddressArg(_) => { panic!("Should not happen") }
+            Arg::NonFungibleAddressArg(_) => { panic!("Should not happen") }
+            Arg::HashArg(_) => { todo!() }
+            Arg::BucketArg(_, _) => { panic!("Should not happen")}
+            Arg::ProofArg(_) => { panic!("Should not happen") }
+            Arg::NonFungibleIdArg(value) => { format!("{}", *value) }
         }
     }
 }

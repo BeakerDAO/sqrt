@@ -2,7 +2,7 @@
 mod rns_tests {
     use scrypto::prelude::{dec, Decimal};
     use sqrt::blueprint::Blueprint;
-    use sqrt::method::Arg::{BucketArg, ComponentAddressArg, ProofArg, StringArg, U8};
+    use sqrt::method::Arg::{AccountAddressArg, BucketArg, ProofArg, StringArg, U8};
     use sqrt::method::{Arg, Method};
     use sqrt::method_args;
     use sqrt::package::Package;
@@ -53,7 +53,7 @@ mod rns_tests {
                 RNSMethods::RegisterName(name, target_address, reserve_years, deposit_amount) => {
                     method_args![
                         StringArg(name.clone()),
-                        ComponentAddressArg(target_address.clone()),
+                        AccountAddressArg(target_address.clone()),
                         U8(*reserve_years),
                         BucketArg(String::from("radix"), *deposit_amount)
                     ]
@@ -64,7 +64,7 @@ mod rns_tests {
                 RNSMethods::UpdateAddress(new_address, fee) => {
                     method_args![
                         ProofArg(String::from("DomainName")),
-                        ComponentAddressArg(new_address.clone()),
+                        AccountAddressArg(new_address.clone()),
                         BucketArg(String::from("radix"), *fee)
                     ]
                 }
@@ -112,12 +112,11 @@ mod rns_tests {
         test_env.publish_package("rns", rns_package);
         test_env.new_component("rns_comp", "rns", "rns", vec![]);
 
-        let current_account = test_env.get_current_account();
         test_env.call_method(
             "rns_comp",
             RNSMethods::RegisterName(
                 String::from("test.xrd"),
-                String::from(current_account.address()),
+                String::from("default"),
                 1,
                 dec!("15"),
             ),
@@ -135,12 +134,11 @@ mod rns_tests {
         test_env.publish_package("rns", rns_package);
         test_env.new_component("rns_comp", "rns", "rns", vec![]);
 
-        let current_account = test_env.get_current_account();
         test_env.call_method(
             "rns_comp",
             RNSMethods::RegisterName(
                 String::from("test.xrd"),
-                String::from(current_account.address()),
+                String::from("default"),
                 1,
                 dec!("15"),
             ),
@@ -162,12 +160,11 @@ mod rns_tests {
         test_env.publish_package("rns", rns_package);
         test_env.new_component("rns_comp", "rns", "rns", vec![]);
 
-        let current_account = test_env.get_current_account();
         test_env.call_method(
             "rns_comp",
             RNSMethods::RegisterName(
                 String::from("test.xrd"),
-                String::from(current_account.address()),
+                String::from("default"),
                 1,
                 dec!("15"),
             ),
@@ -179,7 +176,7 @@ mod rns_tests {
         let account = test_env.get_account("test").unwrap();
         test_env.call_method(
             "rns_comp",
-            RNSMethods::UpdateAddress(String::from(account.address()), dec!("15")),
+            RNSMethods::UpdateAddress(String::from("test"), dec!("15")),
         );
     }
 
@@ -192,12 +189,11 @@ mod rns_tests {
         test_env.publish_package("rns", rns_package);
         test_env.new_component("rns_comp", "rns", "rns", vec![]);
 
-        let current_account = test_env.get_current_account();
         test_env.call_method(
             "rns_comp",
             RNSMethods::RegisterName(
                 String::from("test.xrd"),
-                String::from(current_account.address()),
+                String::from("default"),
                 1,
                 dec!("15"),
             ),
@@ -218,12 +214,11 @@ mod rns_tests {
         test_env.publish_package("rns", rns_package);
         test_env.new_component("rns_comp", "rns", "rns", vec![]);
 
-        let current_account = test_env.get_current_account();
         test_env.call_method(
             "rns_comp",
             RNSMethods::RegisterName(
                 String::from("test.xrd"),
-                String::from(current_account.address()),
+                String::from("default"),
                 1,
                 dec!("15"),
             ),

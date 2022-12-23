@@ -1,15 +1,13 @@
 use crate::account::Account;
 use crate::component::Component;
 use crate::manifest::Manifest;
-use crate::method::Method;
+use crate::method::{Arg, Method};
 use crate::package::Package;
-use crate::utils::{
-    create_dir, generate_owner_badge, run_command, run_manifest, transfer, write_transfer,
-};
+use crate::utils::{create_dir, generate_owner_badge, manifest_exists, run_command, run_manifest, transfer, write_manifest, write_transfer};
 use crate::RADIX_TOKEN;
 use lazy_static::lazy_static;
 use regex::Regex;
-use scrypto::prelude::{dec, Decimal};
+use scrypto::prelude::{Decimal};
 use std::collections::HashMap;
 use std::process::Command;
 
@@ -189,40 +187,114 @@ impl TestEnvironment {
     where
         M: Method,
     {
-        let account_comp = String::from(self.get_current_account().address());
-
         let output;
-        match self.components.get_mut(component) {
+        match self.components.get(component) {
             None => {
                 panic!("No component with name {}", component)
             }
             Some(comp) => {
+
+                if !manifest_exists(method.name(), comp.package_path())
+                {
+                    Self::create_manifest(comp.package_path(), &method);
+                }
                 let component_address = String::from(comp.address());
-                let mut manifest = Manifest::new();
-                manifest.lock_fee(account_comp.clone(), dec!(100));
+                let account_comp = String::from(self.get_current_account().address());
 
+                let mut env_binding = vec![];
+                env_binding.push((String::from("caller_address"), account_comp));
+                env_binding.push((String::from("component_address"), component_address));
                 if method.needs_admin_badge() {
-                    let badge_address = match comp.admin_badge() {
-                        None => {
-                            panic!("The component does not have an admin badge!")
-                        }
-                        Some(str) => str,
-                    };
-
-                    manifest.create_proof(account_comp.clone(), badge_address.clone());
+                    env_binding.push((String::from("badge_address"), comp.admin_badge().as_ref().unwrap().clone()))
                 }
 
-                let method_name = method.name();
-                manifest.call_method(
-                    &method,
-                    component_address,
-                    account_comp.clone(),
-                    &self.tokens,
-                );
-                manifest.drop_proofs();
-                manifest.deposit_batch(account_comp);
+                let mut arg_count = 0u32;
+                match method.args()
+                {
+                    None => {}
+                    Some(args) => {
+                        for arg in args
+                        {
+                            let arg_name = format!("arg_{}", arg_count);
 
-                output = run_manifest(manifest, comp.package_path(), method_name);
+                            match arg
+                            {
+                                Arg::Unit => {},
+                                Arg::ComponentAddressArg(name) =>
+                                    {
+                                        let component_value = match self.get_component(&name)
+                                        {
+                                            None => { panic!("No components with name {}", name) }
+                                            Some(comp) => { String::from(comp) }
+                                        };
+                                        env_binding.push((arg_name, component_value));
+                                    }
+                                Arg::AccountAddressArg(name) =>
+                                    {
+                                        let account_value = match self.get_account(&name)
+                                        {
+                                            None => { panic!("No account with name {}", name) }
+                                            Some(account) => { String::from(account.address()) }
+                                        };
+                                        env_binding.push((arg_name, account_value))
+                                    }
+                                Arg::PackageAddressArg(name) =>
+                                    {
+                                        let package_value = match self.packages.get(&name)
+                                        {
+                                            None => { panic!("No package with name {}", name) }
+                                            Some(package) => { String::from(package.address()) }
+                                        };
+                                        env_binding.push((arg_name, package_value));
+                                    }
+                                Arg::ResourceAddressArg(name) =>
+                                    {
+                                        let resource_value = match self.get_token(&name)
+                                        {
+                                            None => { panic!("No tokens with name {}", name) }
+                                            Some(address) => {address.clone()}
+                                        };
+                                        env_binding.push((arg_name, resource_value));
+                                    }
+                                Arg::NonFungibleAddressArg(name) =>
+                                    {
+                                        let resource_value = match self.get_token(&name)
+                                        {
+                                            None => { panic!("No tokens with name {}", name) }
+                                            Some(address) => {address.clone()}
+                                        };
+                                        env_binding.push((arg_name, resource_value));
+                                    }
+                                Arg::BucketArg(resource_address, amount) =>
+                                    {
+                                        let resource_arg_name = format!("{}_resource", arg_name);
+                                        let amount_arg_name = format!("{}_amount", arg_name);
+                                        let resource_value = match self.get_token(&resource_address)
+                                        {
+                                            None => { panic!("No tokens with name {}", resource_address) }
+                                            Some(address) => {address.clone()}
+                                        };
+                                        env_binding.push((resource_arg_name, resource_value));
+                                        env_binding.push((amount_arg_name, amount.to_string()));
+                                    }
+                                Arg::ProofArg(resource_address) =>
+                                    {
+                                        let resource_value = match self.get_token(&resource_address)
+                                        {
+                                            None => { panic!("No tokens with name {}", resource_address) }
+                                            Some(address) => {address.clone()}
+                                        };
+                                        env_binding.push((arg_name, resource_value));
+                                    }
+                                _ => { env_binding.push((arg_name,arg.value())); }
+                            }
+                            arg_count+=1;
+                        }
+                    }
+                }
+
+                output = run_manifest(comp.package_path(), method.name(), env_binding);
+
                 self.update_current_account();
                 self.update_tokens();
             }
@@ -372,5 +444,15 @@ impl TestEnvironment {
                 }
             }
         }
+    }
+
+    fn create_manifest<M>(path: &str, method: &M)
+        where
+            M: Method
+    {
+        let mut manifest = Manifest::new();
+        manifest.call_method(method);
+        let manifest_string = manifest.build();
+        write_manifest(manifest_string, path, method.name());
     }
 }

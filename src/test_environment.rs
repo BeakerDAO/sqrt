@@ -217,8 +217,20 @@ impl TestEnvironment {
                         {
                             match arg
                             {
-                                Arg::Unit => {},
-                                _ => { self.add_binding_for(&arg, arg_count, &mut env_binding); }
+                                Arg::Unit => {}
+                                Arg::BucketArg(name, amount) =>
+                                    {
+                                        let resource_arg_name = format!("arg_{}_resource",arg_count);
+                                        let amount_arg_name = format!("arg_{}_amount", arg_count);
+                                        let resource_value = match self.get_token(&name)
+                                        {
+                                            None => { panic!("No tokens with name {}", name) }
+                                            Some(address) => {address.clone()}
+                                        };
+                                        env_binding.push((resource_arg_name, resource_value));
+                                        env_binding.push((amount_arg_name, amount.to_string()));
+                                    }
+                                _ => { env_binding.push(self.get_binding_for(&arg, arg_count)) }
                             }
                             arg_count+=1;
                         }
@@ -388,25 +400,46 @@ impl TestEnvironment {
         write_manifest(manifest_string, path, method.name());
     }
 
-    fn add_binding_for(&self, arg: &Arg, arg_count: u32, bindings: &mut Vec<(String,String)>)
+    fn get_binding_for(&self, arg: &Arg, arg_count: u32) -> (String, String)
     {
-        let mut arg_name = format!("arg_{}", arg_count);
-        let arg_value = match arg {
+        let arg_name = format!("arg_{}", arg_count);
+        let arg_value = match arg
+        {
             Arg::Unit => { panic!("Should not happen") }
             Arg::Bool(value) => { format!("{}", *value) }
-            Arg::I8(int) => { format!("{}", *int)}
-            Arg::I16(int) => { format!("{}", *int)}
-            Arg::I32(int) => { format!("{}", *int)}
-            Arg::I64(int) => { format!("{}", *int)}
-            Arg::I128(int) => { format!("{}", *int)}
-            Arg::U8(uint) => { format!("{}", *uint) }
-            Arg::U16(uint) => { format!("{}", *uint) }
-            Arg::U32(uint) => { format!("{}", *uint) }
-            Arg::U64(uint) => { format!("{}", *uint) }
-            Arg::U128(uint) => { format!("{}", *uint) }
-            Arg::StringArg(string) => { format!("{}", string) }
-            Arg::DecimalArg(value) => { format!("{}", *value) }
-            Arg::PreciseDecimalArg(value) => { format!("{}", *value) }
+            Arg::I8(value)  => { format!("{}", *value) }
+            Arg::I16(value) => { format!("{}", *value) }
+            Arg::I32(value)  => { format!("{}", *value) }
+            Arg::I64(value) => { format!("{}", *value) }
+            Arg::I128(value)  => { format!("{}", *value) }
+            Arg::U8(value)  => { format!("{}", *value) }
+            Arg::U16(value)  => { format!("{}", *value) }
+            Arg::U32(value)  => { format!("{}", *value) }
+            Arg::U64(value)  => { format!("{}", *value) }
+            Arg::U128(value) => { format!("{}", *value) }
+            Arg::StringArg(value) | Arg::SystemAddressArg(value) | Arg::Expression(value) | Arg::Blob(value) | Arg::HashArg(value) | Arg::EcdsaSecp256k1PublicKeyArg(value) | Arg::EcdsaSecp256k1Signature(value) | Arg::EddsaEd25519PublicKey(value) | Arg::EddsaEd25519Signature(value) => { format!("{}", *value) }
+
+            Arg::EnumArg(variant, fields) =>
+                {
+                    format!("{}, {}", variant, self.get_binding_for_elements(fields))
+                }
+            Arg::TupleArg(elements)| Arg::VecArg(elements) =>
+                {
+                    format!("{}", self.get_binding_for_elements(elements))
+                }
+            Arg::HashMapArg(elements) =>
+                {
+                    let mut string = String::new();
+                    for (key_arg, value_arg) in elements
+                    {
+                        let (_, key_value) = self.get_binding_for(key_arg, 0);
+                        let (_, value_value) = self.get_binding_for(value_arg, 0);
+                        string = format!("{}Tuple({}, {}), ", string, key_value, value_value);
+                    }
+                    string.pop();
+                    string.pop();
+                    string
+                }
             Arg::PackageAddressArg(name) =>
                 {
                     match self.packages.get(name)
@@ -440,27 +473,6 @@ impl TestEnvironment {
                         Some(address) => {address.clone()}
                     }
                 }
-            Arg::NonFungibleAddressArg(name) =>
-                {
-                    match self.get_token(&name)
-                    {
-                        None => { panic!("No tokens with name {}", name) }
-                        Some(address) => { address.clone() }
-                    }
-                }
-            Arg::BucketArg(resource_address, amount) =>
-                {
-                    let resource_arg_name = format!("{}_resource", arg_name);
-                    let resource_value = match self.get_token(&resource_address)
-                    {
-                        None => { panic!("No tokens with name {}", resource_address) }
-                        Some(address) => {address.clone()}
-                    };
-                    bindings.push((resource_arg_name, resource_value));
-
-                    arg_name = format!("{}_amount", arg_name);
-                    amount.to_string()
-                }
             Arg::ProofArg(resource_address) =>
                 {
                     match self.get_token(&resource_address)
@@ -469,9 +481,46 @@ impl TestEnvironment {
                         Some(address) => { address.clone() }
                     }
                 }
-            Arg::NonFungibleIdArg(value) => { format!("{}", *value) }
-            Arg::Struct(_, _)| Arg::OptionArg(_, _)| Arg::BoxArg(_)| Arg::TupleArg(_)| Arg::ResultArg(_, _, _)| Arg::VecArg(_)| Arg::HashMapArg(_, _, _)| Arg::HashArg(_) => { todo!() }
+            Arg::DecimalArg(value)=>
+                {
+                    value.to_string()
+                }
+            Arg::PreciseDecimalArg(value) =>
+                {
+                    value.to_string()
+                }
+                Arg::NonFungibleIdArg(arg) =>
+                {
+                   let (_, value) =  self.get_binding_for(arg.as_ref(), arg_count);
+                    value
+                }
+            Arg::BucketArg(_, _) => { panic!("This should not happen") }
+            Arg::NonFungibleAddressArg(name, arg) =>
+                {
+                    let (_, id_value) = self.get_binding_for(arg.as_ref(), 0);
+                    let resource_value = match self.get_token(&name)
+                    {
+                        None => { panic!("No tokens with name {}", name) }
+                        Some(address) => {address.clone()}
+                    };
+
+                    format!("{}, {}", resource_value, id_value)
+                }
         };
-        bindings.push((arg_name, arg_value));
+
+        (arg_name, arg_value)
+    }
+
+    fn get_binding_for_elements(&self, args: &Vec<Arg>) -> String
+    {
+        let mut string = String::new();
+        for arg in args
+        {
+            let (_, value) = self.get_binding_for(arg, 0);
+            string = format!("{}{}, ", string, value)
+        }
+        string.pop();
+        string.pop();
+        string
     }
 }

@@ -27,126 +27,152 @@ pub enum Arg {
     U64(u64),
     U128(u128),
     StringArg(String),
-    Struct(String, Vec<Arg>),
-    OptionArg(String, Option<Box<Arg>>),
-    BoxArg(Box<Arg>),
+    EnumArg(String, Vec<Arg>),
     TupleArg(Vec<Arg>),
-    ResultArg(String, String, Box<Result<Arg, Arg>>),
     VecArg(Vec<Arg>),
-    HashMapArg(String, String, HashMap<Arg, Arg>),
-    DecimalArg(Decimal),
-    PreciseDecimalArg(PreciseDecimal),
+    HashMapArg(HashMap<Arg, Arg>),
     PackageAddressArg(String),
     ComponentAddressArg(String),
     AccountAddressArg(String),
     ResourceAddressArg(String),
-    NonFungibleAddressArg(String),
-    HashArg(String),
+    SystemAddressArg(String),
     /// Bucket with resource to send. The String represents the name of the resource and the Decimal the amount to send
     BucketArg(String, Decimal),
     /// Proof of a resource; second argument tells if proof should be in a bucket
     ProofArg(String),
-    NonFungibleIdArg(String),
+    Expression(String),
+    Blob(String),
+    NonFungibleAddressArg(String, Box<Arg>),
+    HashArg(String),
+    EcdsaSecp256k1PublicKeyArg(String),
+    EcdsaSecp256k1Signature(String),
+    EddsaEd25519PublicKey(String),
+    EddsaEd25519Signature(String),
+    DecimalArg(Decimal),
+    PreciseDecimalArg(PreciseDecimal),
+    NonFungibleIdArg(Box<Arg>)
 }
 
 impl Arg {
     pub fn get_type(&self) -> String {
+
         match self {
             Arg::Unit => {
-                format!("()")
+                String::from("()")
             }
             Arg::Bool(_) => {
-                format!("bool")
+                String::from("bool")
             }
             Arg::I8(_) => {
-                format!("i8")
+                String::from("i8")
             }
             Arg::I16(_) => {
-                format!("i16")
+                String::from("i16")
             }
             Arg::I32(_) => {
-                format!("i32")
+                String::from("i32")
             }
             Arg::I64(_) => {
-                format!("i64")
+                String::from("i64")
             }
             Arg::I128(_) => {
-                format!("i128")
+                String::from("i128")
             }
             Arg::U8(_) => {
-                format!("u8")
+                String::from("u8")
             }
             Arg::U16(_) => {
-                format!("u16")
+                String::from("u16")
             }
             Arg::U32(_) => {
-                format!("u32")
+                String::from("u32")
             }
             Arg::U64(_) => {
-                format!("u64")
+                String::from("u64")
             }
             Arg::U128(_) => {
-                format!("u128")
+                String::from("u128")
             }
             Arg::StringArg(_) => {
-                format!("String")
+                String::from("String")
             }
-            Arg::Struct(name, _) => name.clone(),
-            Arg::OptionArg(name, _) => {
-                format!("Option<{}>", name)
+            Arg::EnumArg(_,_) => {
+                String::from("Enum")
             }
-            Arg::BoxArg(arg) => {
-                let type_name = arg.get_type();
-                format!("Box<{}>", type_name)
-            }
-            Arg::TupleArg(_) => {
-                format!("Tuple")
-            }
-            Arg::ResultArg(ok, err, _) => {
-                format!("Result<{},{}>", ok, err)
-            }
-            Arg::VecArg(vec_arg) => {
-                let vec_type = match vec_arg.first() {
-                    None => String::from("()"),
-                    Some(arg) => arg.get_type(),
-                };
-                format!("Vec<{}>", vec_type)
-            }
-            Arg::HashMapArg(key, value, _) => {
-                format!("Map<{},{}>", key, value)
-            }
-            Arg::DecimalArg(_) => {
-                format!("Decimal")
-            }
-            Arg::PreciseDecimalArg(_) => {
-                format!("PreciseDecimal")
-            }
+            Arg::TupleArg(_) =>
+                {
+                    String::from("Tuple")
+                }
+            Arg::VecArg(vec_arg) =>
+                {
+                    let vec_type = match vec_arg.first() {
+                        None => String::from("()"),
+                        Some(arg) => arg.get_type(),
+                    };
+                    format!("Array<{}>", vec_type)
+                }
+            Arg::HashMapArg(_) =>
+                {
+                    String::from("Array<Tuple>")
+                }
             Arg::PackageAddressArg(_) => {
-                format!("PackageAddress")
+                String::from("PackageAddress")
             }
             Arg::ComponentAddressArg(_) => {
-                format!("ComponentAddress")
+                String::from("ComponentAddress")
             }
             Arg::AccountAddressArg(_) => {
-                format!("ComponentAddress")
+                String::from("ComponentAddress")
             }
             Arg::ResourceAddressArg(_) => {
-                format!("ResourceAddress")
+                String::from("ResourceAddress")
             }
-            Arg::NonFungibleAddressArg(_) => {
-                format!("NonFungibleAddress")
-            }
-            Arg::HashArg(_) => {
-                format!("Hash")
-            }
+            Arg::SystemAddressArg(_) =>
+                {
+                    String::from("SystemAddress")
+                }
             Arg::BucketArg(_, _) => {
-                format!("Bucket")
+                String::from("Bucket")
             }
             Arg::ProofArg(_) => {
-                format!("Proof")
+                String::from("Proof")
+            }
+            Arg::Expression(_) =>
+                {
+                    String::from("Expression")
+                }
+            Arg::Blob(_) =>
+                {
+                    String::from("Blob")
+                }
+            Arg::NonFungibleAddressArg(_,_) =>
+                {
+                    String::from("NonFungibleAddress")
+                }
+            Arg::HashArg(_) =>
+                {
+                    String::from("Hash")
+                }
+            Arg::EcdsaSecp256k1PublicKeyArg(_) => {
+                String::from("EcdsaSecp256k1PublicKey")
+            }
+            Arg::EcdsaSecp256k1Signature(_) => {
+                String::from("EcdsaSecp256k1Signature")
+            }
+            Arg::EddsaEd25519PublicKey(_) => {
+                String::from("EddsaEd25519PublicKey")
+            }
+            Arg::EddsaEd25519Signature(_) => {
+                String::from("EddsaEd25519Signature")
+            }
+            Arg::DecimalArg(_) => {
+                String::from("Decimal")
+            }
+            Arg::PreciseDecimalArg(_) => {
+                String::from("PreciseDecimal")
             }
             Arg::NonFungibleIdArg(_) => {
-                format!("NonFungibleId")
+                String::from("NonFungibleId")
             }
         }
     }
@@ -155,22 +181,24 @@ impl Arg {
     {
         let generic = format!("${{arg_{}}}", arg_count);
         match self {
-            Arg::Unit => { format!("()") }
+            Arg::Unit => { String::from("()") }
             Arg::Bool(_) => { generic }
             Arg::I8(_)| Arg::I16(_)| Arg::I32(_)| Arg::I64(_)| Arg::I128(_)| Arg::U8(_)| Arg::U16(_)| Arg::U32(_)| Arg::U64(_)| Arg::U128(_) =>
                 {
                     format!("{}{}", generic, self.get_type())
                 }
             Arg::StringArg(_) => { format!("\"{}\"", generic) }
-            Arg::Struct(_, _) => { format!("Struct({})", generic) }
-            Arg::OptionArg(_, _) => { generic }
-            Arg::BoxArg(_)|Arg::TupleArg(_) | Arg::ResultArg(_, _, _)| Arg::VecArg(_)| Arg::HashMapArg(_, _, _)  | Arg::HashArg(_) | Arg::BucketArg(_, _) | Arg::ProofArg(_) | Arg::NonFungibleIdArg(_) =>
+            Arg::EnumArg(_,_)| Arg::TupleArg(_)| Arg::VecArg(_)| Arg::HashMapArg(_)| Arg::BucketArg(_, _)| Arg::ProofArg(_) =>
                 {
                     format!("{}({})", self.get_type(), generic)
                 }
-            Arg::DecimalArg(_) | Arg::PreciseDecimalArg(_) | Arg::PackageAddressArg(_) | Arg::ComponentAddressArg(_) | Arg::AccountAddressArg(_) | Arg::ResourceAddressArg(_) | Arg::NonFungibleAddressArg(_) =>
+            Arg::PackageAddressArg(_) | Arg::ComponentAddressArg(_) | Arg::AccountAddressArg(_) | Arg::ResourceAddressArg(_) | Arg::SystemAddressArg(_) | Arg::Expression(_) | Arg::Blob(_) | Arg::NonFungibleAddressArg(_,_) | Arg::HashArg(_) | Arg::EcdsaSecp256k1PublicKeyArg(_) | Arg::EcdsaSecp256k1Signature(_) | Arg::EddsaEd25519PublicKey(_) | Arg::EddsaEd25519Signature(_) | Arg::DecimalArg(_) | Arg::PreciseDecimalArg(_) =>
                 {
                     format!("{}(\"{}\")", self.get_type(), generic)
+                }
+            Arg::NonFungibleIdArg(arg) =>
+                {
+                    format!("{}({})", self.get_type(), arg.to_generic(arg_count))
                 }
         }
     }

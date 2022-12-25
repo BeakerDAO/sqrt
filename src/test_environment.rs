@@ -230,6 +230,36 @@ impl TestEnvironment {
                                         env_binding.push((resource_arg_name, resource_value));
                                         env_binding.push((amount_arg_name, amount.to_string()));
                                     }
+                                Arg::ProofArg(name, opt_id) =>
+                                    {
+                                        match opt_id
+                                        {
+                                            None =>
+                                                {
+                                                    let resource_value = match self.get_token(&name)
+                                                    {
+                                                        None => { panic!("No tokens with name {}", name) }
+                                                        Some(address) => {address.clone()}
+                                                    };
+                                                    let resource_arg_name = format!("arg_{}",arg_count);
+                                                    env_binding.push((resource_arg_name, resource_value));
+                                                }
+
+                                            Some(id_value) =>
+                                                {
+                                                    let resource_value = match self.get_token(&name)
+                                                    {
+                                                        None => { panic!("No tokens with name {}", name) }
+                                                        Some(address) => {address.clone()}
+                                                    };
+                                                    let resource_arg_name = format!("arg_{}_resource", arg_count);
+                                                    let id_arg_name = format!("arg_{}_id", arg_count);
+
+                                                    env_binding.push((resource_arg_name, resource_value));
+                                                    env_binding.push((id_arg_name, id_value));
+                                                }
+                                        }
+                                    }
                                 _ => { env_binding.push(self.get_binding_for(&arg, arg_count)) }
                             }
                             arg_count+=1;
@@ -473,14 +503,6 @@ impl TestEnvironment {
                         Some(address) => {address.clone()}
                     }
                 }
-            Arg::ProofArg(resource_address) =>
-                {
-                    match self.get_token(&resource_address)
-                    {
-                        None => { panic!("No tokens with name {}", resource_address) }
-                        Some(address) => { address.clone() }
-                    }
-                }
             Arg::DecimalArg(value)=>
                 {
                     value.to_string()
@@ -494,7 +516,7 @@ impl TestEnvironment {
                    let (_, value) =  self.get_binding_for(arg.as_ref(), arg_count);
                     value
                 }
-            Arg::BucketArg(_, _) => { panic!("This should not happen") }
+            Arg::BucketArg(_, _)| Arg::ProofArg(_,_) => { panic!("This should not happen") }
             Arg::NonFungibleAddressArg(name, arg) =>
                 {
                     let (_, id_value) = self.get_binding_for(arg.as_ref(), 0);

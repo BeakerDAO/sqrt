@@ -63,7 +63,7 @@ mod rns_tests {
                 }
                 RNSMethods::UpdateAddress(new_address, fee) => {
                     method_args![
-                        ProofArg(String::from("DomainName")),
+                        ProofArg(String::from("DomainName"), Some(String::from("Bytes(\"031b\")"))),
                         AccountAddressArg(new_address.clone()),
                         BucketArg(String::from("radix"), *fee)
                     ]

@@ -33,7 +33,7 @@ impl Manifest {
         self.lock_fee(Self::caller_binding(), dec!(100));
         if method.needs_admin_badge()
         {
-            self.create_proof(Self::caller_binding(), Self::admin_badge_binding());
+            self.create_proof(Self::caller_binding(), Self::admin_badge_binding(), None);
         }
 
         match method.args() {
@@ -52,13 +52,35 @@ impl Manifest {
                                 self.id += 1;
                                 args_vec.push(ret);
                             }
-                        Arg::ProofArg(_) =>
+                        Arg::ProofArg(_,opt) =>
                             {
-                                let resource_arg = format!("arg_{}", self.arg_count);
-                                self.create_usable_proof(Self::caller_binding(), resource_arg, self.id);
+                                let resource_arg;
+                                let opt_id_arg;
+                                match opt
+                                {
+                                    Some(_) =>
+                                        {
+                                            resource_arg = format!("arg_{}_resource", self.arg_count);
+                                            opt_id_arg = Some(format!("arg_{}_id", self.id));
+                                        }
+                                    None =>
+                                        {
+                                            resource_arg = format!("arg_{}", self.arg_count);
+                                            opt_id_arg = None;
+                                        }
+                                }
+
+                                self.create_usable_proof(Self::caller_binding(), resource_arg, opt_id_arg, self.id);
                                 let ret = format!("Proof(\"{}\")", self.id);
                                 self.id += 1;
                                 self.has_proofs = true;
+                                args_vec.push(ret);
+                            }
+                        Arg::NonFungibleAddressArg(_,_) =>
+                            {
+                                let resource_arg = format!("arg_{}_resource", self.arg_count);
+                                let id_arg = format!("arg_{}_id", self.arg_count);
+                                let ret = format!("{}(\"{}\", {})", arg.get_type(), resource_arg, id_arg);
                                 args_vec.push(ret);
                             }
                         _ =>
@@ -129,12 +151,29 @@ impl Manifest {
         self
     }
 
-    pub fn create_proof(&mut self, account_arg: String, resource_address_arg: String) -> &mut Self {
-        let inst_1 = Instruction::CallMethod {
-            component_address_generic: account_arg,
-            method_name: "create_proof".to_string(),
-            args: vec![format!("ResourceAddress(\"${{{}}}\")", resource_address_arg)],
+    pub fn create_proof(&mut self, account_arg: String, resource_address_arg: String, opt_id_arg: Option<String>) -> &mut Self {
+
+        let resource_arg = format!("ResourceAddress(\"${{{}}}\")", resource_address_arg);
+        let inst_1 = match opt_id_arg
+        {
+            None =>
+                {
+                    Instruction::CallMethod {
+                        component_address_generic: account_arg,
+                        method_name: "create_proof".to_string(),
+                        args: vec![resource_arg]
+                    }
+                }
+            Some(id_arg) =>
+                {
+                    Instruction::CallMethod {
+                        component_address_generic: account_arg,
+                        method_name: "create_proof_by_ids".to_string(),
+                        args: vec![format!("Array<NonFungibleId>(NonFungibleId(${{{}}}))", id_arg), resource_arg]
+                    }
+                }
         };
+
         self.needed_resources.push(inst_1);
 
         self
@@ -144,15 +183,15 @@ impl Manifest {
         &mut self,
         account_arg: String,
         resource_address_arg: String,
+        opt_id_arg: Option<String>,
         proof_id: u32,
     ) -> &mut Self {
-        self.create_proof(account_arg, resource_address_arg.clone());
+        self.create_proof(account_arg, resource_address_arg.clone(), opt_id_arg.clone());
 
-        let inst = Instruction::CreateProofFromAuthZone {
-            resource_address_generic: resource_address_arg,
-            proof_id,
-        };
-
+       let inst =  Instruction::CreateProofFromAuthZone {
+           resource_address_generic: resource_address_arg,
+           proof_id
+       };
         self.needed_resources.push(inst);
 
         self

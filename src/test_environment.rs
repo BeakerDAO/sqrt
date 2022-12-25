@@ -10,13 +10,14 @@ use regex::Regex;
 use scrypto::prelude::{Decimal};
 use std::collections::HashMap;
 use std::process::Command;
+use crate::resource_manager::ResourceManager;
 
 pub struct TestEnvironment {
     accounts: HashMap<String, Account>,
     packages: HashMap<String, Package>,
     components: HashMap<String, Component>,
     current_account: String,
-    tokens: HashMap<String, String>,
+    resource_manager: ResourceManager,
     owner_badge: String,
 }
 
@@ -35,7 +36,7 @@ impl TestEnvironment {
             packages: HashMap::new(),
             components: HashMap::new(),
             current_account: String::from("default"),
-            tokens,
+            resource_manager: ResourceManager::new(),
             owner_badge: generate_owner_badge(),
         }
     }
@@ -51,12 +52,11 @@ impl TestEnvironment {
     }
 
     pub fn create_fixed_supply_token(&mut self, name: &str, initial_supply: Decimal) -> String {
-        let real_name = String::from(name).to_lowercase();
-        match self.tokens.get(&real_name) {
-            Some(_) => {
+        let name = String::from(name);
+        if self.resource_manager.exists(&name) {
                 panic!("A token with same name already exists!")
             }
-            None => {
+            else {
                 let output = run_command(
                     Command::new("resim")
                         .arg("new-token-fixed")
@@ -70,11 +70,11 @@ impl TestEnvironment {
 
                 let resource_address = String::from(&ADDRESS_RE.captures(&output).unwrap()[1]);
 
-                self.tokens.insert(real_name, resource_address.clone());
+                self.resource_manager.update_resources();
                 self.update_current_account();
                 resource_address
             }
-        }
+
     }
 
     pub fn publish_package(&mut self, name: &str, mut package: Package) {
@@ -161,7 +161,7 @@ impl TestEnvironment {
                     self.components.insert(String::from(name), comp);
                     write_transfer(package.path());
                     self.update_current_account();
-                    self.update_tokens();
+                    self.resource_manager.update_resources();
                 }
                 None => {
                     panic!(
@@ -222,12 +222,7 @@ impl TestEnvironment {
                                     {
                                         let resource_arg_name = format!("arg_{}_resource",arg_count);
                                         let amount_arg_name = format!("arg_{}_amount", arg_count);
-                                        let resource_value = match self.get_token(&name)
-                                        {
-                                            None => { panic!("No tokens with name {}", name) }
-                                            Some(address) => {address.clone()}
-                                        };
-                                        env_binding.push((resource_arg_name, resource_value));
+                                        env_binding.push((resource_arg_name, self.get_token(&name).clone()));
                                         env_binding.push((amount_arg_name, amount.to_string()));
                                     }
                                 Arg::ProofArg(name, opt_id) =>
@@ -236,26 +231,16 @@ impl TestEnvironment {
                                         {
                                             None =>
                                                 {
-                                                    let resource_value = match self.get_token(&name)
-                                                    {
-                                                        None => { panic!("No tokens with name {}", name) }
-                                                        Some(address) => {address.clone()}
-                                                    };
                                                     let resource_arg_name = format!("arg_{}",arg_count);
-                                                    env_binding.push((resource_arg_name, resource_value));
+                                                    env_binding.push((resource_arg_name, self.get_token(&name).clone()));
                                                 }
 
                                             Some(id_value) =>
                                                 {
-                                                    let resource_value = match self.get_token(&name)
-                                                    {
-                                                        None => { panic!("No tokens with name {}", name) }
-                                                        Some(address) => {address.clone()}
-                                                    };
                                                     let resource_arg_name = format!("arg_{}_resource", arg_count);
                                                     let id_arg_name = format!("arg_{}_id", arg_count);
 
-                                                    env_binding.push((resource_arg_name, resource_value));
+                                                    env_binding.push((resource_arg_name, self.get_token(&name).clone()));
                                                     env_binding.push((id_arg_name, id_value));
                                                 }
                                         }
@@ -270,7 +255,7 @@ impl TestEnvironment {
                 output = run_manifest(comp.package_path(), method.name(), env_binding);
 
                 self.update_current_account();
-                self.update_tokens();
+                self.resource_manager.update_resources();
             }
         }
 
@@ -283,36 +268,37 @@ impl TestEnvironment {
             None => {
                 panic!("Account {} does not exist", account)
             }
-            Some(acc) => match self.tokens.get(token) {
-                None => {
-                    panic!("Token {} does not exist", token)
+            Some(acc) =>
+                {
+                    let resource_address = self.resource_manager.get_address(token);
+                    let owned = acc.amount_owned(resource_address);
+                    if owned < amount
+                        {
+                            panic!("Current account does not own enough token {} (owns {})", token, owned)
+                        }
+                        else {
+                            transfer(
+                                &from,
+                                acc.address(),
+                                resource_address,
+                                amount.to_string().as_str(),
+                            );
+                            self.resource_manager.update_resources_for_account(acc);
+                            self.update_current_account();
+                        }
+                    }
                 }
-                Some(tok) => {
-                    transfer(
-                        &from,
-                        acc.address(),
-                        tok.as_str(),
-                        amount.to_string().as_str(),
-                    );
-                    acc.update_resources();
-                    self.accounts
-                        .get_mut(&self.current_account)
-                        .unwrap()
-                        .update_resources();
-                }
-            },
-        }
     }
+
 
     pub fn reset() {
         run_command(Command::new("resim").arg("reset"), false);
     }
 
-    fn update_current_account(&mut self) {
-        self.accounts
-            .get_mut(&self.current_account)
-            .unwrap()
-            .update_resources();
+    fn update_current_account(&mut self)
+    {
+        let account = self.accounts.get_mut(&self.current_account).unwrap();
+        self.resource_manager.update_resources_for_account(account);
     }
 
     pub fn set_current_epoch(&mut self, epoch: u64) {
@@ -345,9 +331,8 @@ impl TestEnvironment {
         self.accounts.get(&self.current_account).unwrap()
     }
 
-    pub fn get_token(&self, name: &str) -> Option<&String> {
-        let real_name = String::from(name).to_lowercase();
-        self.tokens.get(&real_name)
+    pub fn get_token(&self, name: &str) -> &String {
+        self.resource_manager.get_address(name)
     }
 
     pub fn get_account(&self, name: &str) -> Option<&Account> {
@@ -359,22 +344,15 @@ impl TestEnvironment {
             None => {
                 panic!("The account {} does not exist", account)
             }
-            Some(acc) => match self.tokens.get(&token.to_lowercase()) {
-                None => {
-                    panic!("The token {} does not exist", token)
+            Some(acc) =>
+                {
+                    acc.amount_owned(self.get_token(token))
                 }
-                Some(tok) => acc.amount_owned(tok),
-            },
         }
     }
 
     pub fn amount_owned_by_current(&self, token: &str) -> Decimal {
-        match self.tokens.get(&token.to_lowercase()) {
-            None => {
-                panic!("The token {} does not exist", token)
-            }
-            Some(tok) => self.get_current_account().amount_owned(tok),
-        }
+       self.get_current_account().amount_owned(self.get_token(token))
     }
 
     pub fn get_component(&self, name: &str) -> Option<&str> {
@@ -384,41 +362,6 @@ impl TestEnvironment {
         }
     }
 
-    fn try_add_token(&mut self, name: &str, address: &str) {
-        let real_name = String::from(name).to_lowercase();
-        match self.tokens.get(&real_name) {
-            Some(_) => {}
-            None => {
-                self.tokens.insert(real_name, String::from(address));
-            }
-        }
-    }
-
-    fn update_tokens(&mut self) {
-        let output = run_command(Command::new("resim").arg("show-ledger"), false);
-
-        lazy_static! {
-            static ref RESOURCES_RE: Regex = Regex::new(r#"resource_(\w*)"#).unwrap();
-        }
-
-        for resource in RESOURCES_RE.captures_iter(&output) {
-            let address = &resource[1];
-            let final_address = format!("{}{}", "resource_", address);
-            let output_show =
-                run_command(Command::new("resim").arg("show").arg(&final_address), false);
-
-            lazy_static! {
-                static ref NAME_RE: Regex = Regex::new(r#"name: (.*)"#).unwrap();
-            }
-
-            match &NAME_RE.captures(&output_show) {
-                None => {}
-                Some(name) => {
-                    self.try_add_token(&name[1], &final_address);
-                }
-            }
-        }
-    }
 
     fn create_manifest<M>(path: &str, method: &M)
         where
@@ -497,11 +440,7 @@ impl TestEnvironment {
 
             Arg::ResourceAddressArg(name) =>
                 {
-                    match self.get_token(&name)
-                    {
-                        None => { panic!("No tokens with name {}", name) }
-                        Some(address) => {address.clone()}
-                    }
+                    self.resource_manager.get_address(name).clone()
                 }
             Arg::DecimalArg(value)=>
                 {
@@ -520,11 +459,7 @@ impl TestEnvironment {
             Arg::NonFungibleAddressArg(name, arg) =>
                 {
                     let (_, id_value) = self.get_binding_for(arg.as_ref(), 0);
-                    let resource_value = match self.get_token(&name)
-                    {
-                        None => { panic!("No tokens with name {}", name) }
-                        Some(address) => {address.clone()}
-                    };
+                    let resource_value = self.resource_manager.get_address(name);
 
                     format!("{}, {}", resource_value, id_value)
                 }

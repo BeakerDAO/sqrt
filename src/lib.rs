@@ -9,5 +9,6 @@ pub mod method;
 pub mod package;
 pub mod test_environment;
 mod utils;
+mod resource_manager;
 
 pub const RADIX_TOKEN: &str = "resource_sim1qzkcyv5dwq3r6kawy6pxpvcythx8rh8ntum6ws62p95sqjjpwr";

@@ -3,7 +3,7 @@ use std::fmt::{Display, Formatter};
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Instruction {
     TakeFromWorktopByAmount {
-        amount_arg:  String,
+        amount_arg: String,
         resource_address_arg: String,
         bucket_id: u32,
     },
@@ -11,7 +11,7 @@ pub enum Instruction {
     TakeFromWorktopByIds {
         ids_arg: String,
         resource_address_arg: String,
-        bucket_id: u32
+        bucket_id: u32,
     },
 
     CallMethod {
@@ -29,7 +29,7 @@ pub enum Instruction {
     CreateProofFromAuthZoneByIds {
         ids_arg: String,
         resource_address_arg: String,
-        proof_id: u32
+        proof_id: u32,
     },
 
     DropAllProofs,
@@ -39,7 +39,9 @@ impl Display for Instruction {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             Instruction::TakeFromWorktopByAmount {
-                amount_arg, resource_address_arg, bucket_id
+                amount_arg,
+                resource_address_arg,
+                bucket_id,
             } => {
                 write!(
                     f,
@@ -52,21 +54,24 @@ impl Display for Instruction {
             }
 
             Instruction::TakeFromWorktopByIds {
-                resource_address_arg, ids_arg, bucket_id
-            } =>
-                {
-                    write!(
-                        f,
-                        "TAKE_FROM_WORKTOP_BY_IDS\n\
-                               \tArray<NonFungibleId>(\"${{{}}}\")\n\
+                resource_address_arg,
+                ids_arg,
+                bucket_id,
+            } => {
+                write!(
+                    f,
+                    "TAKE_FROM_WORKTOP_BY_IDS\n\
+                               \tArray<NonFungibleId>(${{{}}})\n\
                                \tResourceAddress(\"${{{}}}\")\n\
                                \tBucket(\"{}\");",
-                        ids_arg, resource_address_arg, bucket_id
-                    )
-                }
+                    ids_arg, resource_address_arg, bucket_id
+                )
+            }
 
             Instruction::CallMethod {
-                component_address_arg, method_name, args
+                component_address_arg,
+                method_name,
+                args,
             } => {
                 let mut arg_str = String::new();
                 for arg in args {
@@ -103,7 +108,7 @@ impl Display for Instruction {
             Instruction::CreateProofFromAuthZoneByIds {
                 ids_arg,
                 resource_address_arg,
-                proof_id
+                proof_id,
             } => {
                 write!(
                     f,

@@ -3,7 +3,6 @@ The Scrypto Quick Rtm Testing package is a tool to easily test Scrypto packages 
 
 # TODO for version 1.0
 - [ ] Deal with return of blueprint methods
-- [ ] Generic RTM
 - [ ] Allow multiple arguments return when instantiating a function
 - [ ] Allow multiple possible instantiation
 - [ ] Deal with blueprints state 

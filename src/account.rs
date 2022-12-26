@@ -10,7 +10,7 @@ pub struct Account {
     public_key: String,
     private_key: String,
     fungibles: HashMap<String, Decimal>,
-    non_fungibles: HashMap<String, Vec<String>>
+    non_fungibles: HashMap<String, Vec<String>>,
 }
 
 impl Account {
@@ -41,7 +41,7 @@ impl Account {
             public_key: String::from(public_key),
             private_key: String::from(private_key),
             fungibles: HashMap::new(),
-            non_fungibles: HashMap::new()
+            non_fungibles: HashMap::new(),
         }
     }
 
@@ -60,7 +60,7 @@ impl Account {
     pub fn amount_owned(&self, resource: &String) -> Decimal {
         match self.non_fungibles.get(resource) {
             None => {}
-            Some(ids) => { return Decimal::from(ids.len()) }
+            Some(ids) => return Decimal::from(ids.len()),
         }
 
         match self.fungibles.get(resource) {
@@ -73,33 +73,25 @@ impl Account {
         self.non_fungibles.get(address)
     }
 
-    pub fn update_fungible(&mut self, address: &String, new_amount: Decimal)
-    {
-        match self.fungibles.get_mut(address)
-        {
-            None =>
-                {
-                    self.fungibles.insert(address.clone(), new_amount);
-                }
-            Some(amount) =>
-                {
-                    *amount = new_amount;
-                }
+    pub fn update_fungible(&mut self, address: &String, new_amount: Decimal) {
+        match self.fungibles.get_mut(address) {
+            None => {
+                self.fungibles.insert(address.clone(), new_amount);
+            }
+            Some(amount) => {
+                *amount = new_amount;
+            }
         }
     }
 
-    pub fn update_non_fungibles(&mut self, address: &String, new_ids: Vec<String>)
-    {
-        match self.non_fungibles.get_mut(address)
-        {
-            None =>
-                {
-                    self.non_fungibles.insert(address.clone(), new_ids);
-                }
-            Some(ids) =>
-                {
-                    *ids = new_ids;
-                }
+    pub fn update_non_fungibles(&mut self, address: &String, new_ids: Vec<String>) {
+        match self.non_fungibles.get_mut(address) {
+            None => {
+                self.non_fungibles.insert(address.clone(), new_ids);
+            }
+            Some(ids) => {
+                *ids = new_ids;
+            }
         }
     }
 }

@@ -68,7 +68,11 @@ pub fn create_dir(path: &str) {
     fs::create_dir_all(&new_path).expect("Something went wrong when trying to create rtm path");
 }
 
-pub fn run_manifest(package_path: &str, name: &str, env_variables_binding: Vec<(String,String)>) -> String {
+pub fn run_manifest(
+    package_path: &str,
+    name: &str,
+    env_variables_binding: Vec<(String, String)>,
+) -> String {
     let current_dir = env::current_dir().expect("Could not find current directory");
     let path = format!(
         "{}/{}/rtm/{}{}",
@@ -78,7 +82,12 @@ pub fn run_manifest(package_path: &str, name: &str, env_variables_binding: Vec<(
         ".rtm"
     );
     run_command(
-        Command::new("resim").arg("run").arg(path).envs(env_variables_binding), true)
+        Command::new("resim")
+            .arg("run")
+            .arg(path)
+            .envs(env_variables_binding),
+        true,
+    )
 }
 
 pub fn transfer(from: &str, to: &str, asset: &str, amount: &str) -> String {
@@ -94,8 +103,7 @@ pub fn transfer(from: &str, to: &str, asset: &str, amount: &str) -> String {
     )
 }
 
-pub fn manifest_exists(method_name: &str, path: &str) -> bool
-{
+pub fn manifest_exists(method_name: &str, path: &str) -> bool {
     let current_dir = env::current_dir().expect("Could not find current directory");
     let path = format!(
         "{}/{}/rtm/{}{}",

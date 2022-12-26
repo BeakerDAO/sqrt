@@ -2,7 +2,10 @@
 mod rns_tests {
     use scrypto::prelude::{dec, Decimal};
     use sqrt::blueprint::Blueprint;
-    use sqrt::method::Arg::{AccountAddressArg, FungibleBucketArg, NonFungibleBucketArg, NonFungibleProofArg, StringArg, U8};
+    use sqrt::method::Arg::{
+        AccountAddressArg, FungibleBucketArg, NonFungibleBucketArg, NonFungibleProofArg, StringArg,
+        U8,
+    };
     use sqrt::method::{Arg, Method};
     use sqrt::method_args;
     use sqrt::package::Package;
@@ -59,9 +62,12 @@ mod rns_tests {
                     ]
                 }
                 RNSMethods::UnregisterName(id) => {
-                    method_args![NonFungibleBucketArg(String::from("DomainName"), vec![id.clone()])]
+                    method_args![NonFungibleBucketArg(
+                        String::from("DomainName"),
+                        vec![id.clone()]
+                    )]
                 }
-                RNSMethods::UpdateAddress(new_address, id,fee) => {
+                RNSMethods::UpdateAddress(new_address, id, fee) => {
                     method_args![
                         NonFungibleProofArg(String::from("DomainName"), vec![id.clone()]),
                         AccountAddressArg(new_address.clone()),
@@ -146,7 +152,9 @@ mod rns_tests {
         let owned_nft = test_env.amount_owned_by_current("DomainName");
         assert_eq!(owned_nft, Decimal::one());
 
-        let ids = test_env.get_non_fungible_ids_for_current("DomainName").unwrap();
+        let ids = test_env
+            .get_non_fungible_ids_for_current("DomainName")
+            .unwrap();
         let id = ids.get(0).unwrap();
         test_env.call_method("rns_comp", RNSMethods::UnregisterName(id.clone()));
         let owned_nft = test_env.amount_owned_by_current("DomainName");
@@ -176,7 +184,9 @@ mod rns_tests {
 
         test_env.create_account("test");
 
-        let ids = test_env.get_non_fungible_ids_for_current("DomainName").unwrap();
+        let ids = test_env
+            .get_non_fungible_ids_for_current("DomainName")
+            .unwrap();
         let id = ids.get(0).unwrap();
         test_env.call_method(
             "rns_comp",

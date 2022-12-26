@@ -1,31 +1,28 @@
-use std::collections::HashMap;
-use std::process::Command;
+use crate::account::Account;
+use crate::utils::{generate_owner_badge, run_command};
 use lazy_static::lazy_static;
 use regex::{Captures, Regex};
 use scrypto::prelude::Decimal;
-use crate::account::Account;
-use crate::utils::{generate_owner_badge, run_command};
+use std::collections::HashMap;
+use std::process::Command;
 
 pub struct ResourceManager {
     resources: HashMap<String, String>,
-    is_fungible: HashMap<String, bool>
+    is_fungible: HashMap<String, bool>,
 }
 
-
 impl ResourceManager {
-
     pub fn new() -> ResourceManager {
         let mut resource_manager = ResourceManager {
             resources: HashMap::new(),
-            is_fungible: HashMap::new()
+            is_fungible: HashMap::new(),
         };
 
         resource_manager.update_resources();
         resource_manager
     }
 
-    pub fn update_resources(&mut self)
-    {
+    pub fn update_resources(&mut self) {
         let output = run_command(Command::new("resim").arg("show-ledger"), false);
 
         lazy_static! {
@@ -50,8 +47,7 @@ impl ResourceManager {
                 None => {}
                 Some(name) => {
                     let is_fungible = FUNGIBLE_RE.is_match(&output_show);
-                    if !is_fungible
-                    {
+                    if !is_fungible {
                         let mut splitter = final_address.split(":");
                         final_address = splitter.next().unwrap().to_string();
                     }
@@ -61,35 +57,37 @@ impl ResourceManager {
         }
     }
 
-    pub fn update_resources_for_account(&self, account: &mut Account)
-    {
-        let account_resources = run_command(Command::new("resim").arg("show").arg(account.address()), false);
+    pub fn update_resources_for_account(&self, account: &mut Account) {
+        let account_resources = run_command(
+            Command::new("resim").arg("show").arg(account.address()),
+            false,
+        );
 
         lazy_static! {
-            static ref RESOURCE_RE: Regex = Regex::new(r#"amount: ([\d.]*), resource address: (\w*)"#).unwrap();
+            static ref RESOURCE_RE: Regex =
+                Regex::new(r#"amount: ([\d.]*), resource address: (\w*)"#).unwrap();
         }
 
         lazy_static! {
-            static ref NON_FUNGIBLE_RE: Regex = Regex::new(r#"NonFungibleId\((.*)\), immutable_data"#).unwrap();
+            static ref NON_FUNGIBLE_RE: Regex =
+                Regex::new(r#"NonFungibleId\((.*)\), immutable_data"#).unwrap();
         }
 
-        let mut non_fungible_vec: Vec<Captures> = NON_FUNGIBLE_RE.captures_iter(&account_resources).collect();
+        let mut non_fungible_vec: Vec<Captures> =
+            NON_FUNGIBLE_RE.captures_iter(&account_resources).collect();
 
-        for resource in RESOURCE_RE.captures_iter(&account_resources)
-        {
+        for resource in RESOURCE_RE.captures_iter(&account_resources) {
             let amount = Decimal::from(&resource[1]);
             let address = String::from(&resource[2]);
-            if self.is_fungible(&address)
-            {
+            if self.is_fungible(&address) {
                 account.update_fungible(&address, amount);
-            }
-            else
-            {
+            } else {
                 let amount_cor = amount.0 / Decimal::one().0;
-                let amount_int: u32 = amount_cor.try_into().expect("Non integer amount of non fungible resources is impossible");
+                let amount_int: u32 = amount_cor
+                    .try_into()
+                    .expect("Non integer amount of non fungible resources is impossible");
                 let mut ids = vec![];
-                for _ in 0..amount_int
-                {
+                for _ in 0..amount_int {
                     let nf_resource = non_fungible_vec.remove(0);
                     let nf_id = &nf_resource[1];
                     ids.push(String::from(nf_id));
@@ -100,39 +98,35 @@ impl ResourceManager {
         }
     }
 
-    pub fn exists(&self, name: &String) -> bool
-    {
+    pub fn exists(&self, name: &String) -> bool {
         self.resources.contains_key(name)
     }
 
-    pub fn add_resource(&mut self, name: &String, resource_address: String, is_fungible: bool)
-    {
+    pub fn add_resource(&mut self, name: &String, resource_address: String, is_fungible: bool) {
         let recorded_name = Self::recorded_name(name);
-        if !self.exists(&recorded_name)
-        {
-            self.resources.insert(recorded_name.clone(), resource_address.clone());
+        if !self.exists(&recorded_name) {
+            self.resources
+                .insert(recorded_name.clone(), resource_address.clone());
             self.is_fungible.insert(resource_address, is_fungible);
         }
     }
 
-    pub fn get_address(&self, name: &str) -> &String
-    {
+    pub fn get_address(&self, name: &str) -> &String {
         let recorded_name = Self::recorded_name(&String::from(name));
         let error = format!("The resource {} does not exist!", name);
         self.resources.get(&recorded_name).expect(&error)
     }
 
-    pub fn is_fungible(&self, address: &String) -> bool
-    {
-        match self.is_fungible.get(address)
-        {
-            None => { panic!("The resource {} does not exist!", *address) }
-            Some(b) => { *b }
+    pub fn is_fungible(&self, address: &String) -> bool {
+        match self.is_fungible.get(address) {
+            None => {
+                panic!("The resource {} does not exist!", *address)
+            }
+            Some(b) => *b,
         }
     }
 
-    pub fn generate_owner_badge(&mut self, current_account: &mut Account)
-    {
+    pub fn generate_owner_badge(&mut self, current_account: &mut Account) {
         let resource_address = generate_owner_badge();
         let mut splitter = resource_address.split(":");
         let true_address = splitter.next().unwrap().to_string();
@@ -140,13 +134,11 @@ impl ResourceManager {
         self.update_resources_for_account(current_account);
     }
 
-    pub fn get_owner_badge(&self) -> String
-    {
+    pub fn get_owner_badge(&self) -> String {
         format!("{}:U32#1", *self.get_address("owner_badge"))
     }
 
-    fn recorded_name(name: &String) -> String
-    {
+    fn recorded_name(name: &String) -> String {
         name.to_lowercase()
     }
 }

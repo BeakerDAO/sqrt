@@ -4,7 +4,7 @@ use lazy_static::lazy_static;
 use regex::{Captures, Regex};
 use scrypto::prelude::Decimal;
 use crate::account::Account;
-use crate::utils::run_command;
+use crate::utils::{generate_owner_badge, run_command};
 
 pub struct ResourceManager {
     resources: HashMap<String, String>,
@@ -15,10 +15,13 @@ pub struct ResourceManager {
 impl ResourceManager {
 
     pub fn new() -> ResourceManager {
-        ResourceManager {
+        let mut resource_manager = ResourceManager {
             resources: HashMap::new(),
             is_fungible: HashMap::new()
-        }
+        };
+
+        resource_manager.update_resources();
+        resource_manager
     }
 
     pub fn update_resources(&mut self)
@@ -31,22 +34,27 @@ impl ResourceManager {
 
         for resource in RESOURCES_RE.captures_iter(&output) {
             let address = &resource[1];
-            let final_address = format!("{}{}", "resource_", address);
+            let mut final_address = format!("{}{}", "resource_", address);
             let output_show =
                 run_command(Command::new("resim").arg("show").arg(&final_address), false);
 
             lazy_static! {
-                static ref NAME_RE: Regex = Regex::new(r#"name: (.*)"#).unwrap();
+                static ref NAME_RE: Regex = Regex::new(r#"name: (\w*)"#).unwrap();
             }
 
             lazy_static! {
-                static ref FUNGIBLE_RE: Regex = Regex::new(r#"ResourceType: Fungible"#).unwrap();
+                static ref FUNGIBLE_RE: Regex = Regex::new(r#"Resource Type: Fungible"#).unwrap();
             }
 
             match &NAME_RE.captures(&output_show) {
                 None => {}
                 Some(name) => {
                     let is_fungible = FUNGIBLE_RE.is_match(&output_show);
+                    if !is_fungible
+                    {
+                        let mut splitter = final_address.split(":");
+                        final_address = splitter.next().unwrap().to_string();
+                    }
                     self.add_resource(&String::from(&name[1]), final_address, is_fungible)
                 }
             }
@@ -58,11 +66,11 @@ impl ResourceManager {
         let account_resources = run_command(Command::new("resim").arg("show").arg(account.address()), false);
 
         lazy_static! {
-            static ref RESOURCE_RE: Regex = Regex::new(r#"\{ amount: ([\d.]*), resource address: (\w*) \}"#).unwrap();
+            static ref RESOURCE_RE: Regex = Regex::new(r#"amount: ([\d.]*), resource address: (\w*)"#).unwrap();
         }
 
         lazy_static! {
-            static ref NON_FUNGIBLE_RE: Regex = Regex::new(r#"NonFungible { id: NonFungibleId\( (.*) \), immutable_data"#).unwrap();
+            static ref NON_FUNGIBLE_RE: Regex = Regex::new(r#"NonFungibleId\((.*)\), immutable_data"#).unwrap();
         }
 
         let mut non_fungible_vec: Vec<Captures> = NON_FUNGIBLE_RE.captures_iter(&account_resources).collect();
@@ -77,7 +85,8 @@ impl ResourceManager {
             }
             else
             {
-                let amount_int: i32 = amount.0.try_into().expect("Non integer amount of non fungible resources is impossible");
+                let amount_cor = amount.0 / Decimal::one().0;
+                let amount_int: u32 = amount_cor.try_into().expect("Non integer amount of non fungible resources is impossible");
                 let mut ids = vec![];
                 for _ in 0..amount_int
                 {
@@ -101,7 +110,7 @@ impl ResourceManager {
         let recorded_name = Self::recorded_name(name);
         if !self.exists(&recorded_name)
         {
-            self.resources.insert(name.clone(), resource_address.clone());
+            self.resources.insert(recorded_name.clone(), resource_address.clone());
             self.is_fungible.insert(resource_address, is_fungible);
         }
     }
@@ -115,7 +124,25 @@ impl ResourceManager {
 
     pub fn is_fungible(&self, address: &String) -> bool
     {
-        *self.is_fungible.get(address).unwrap()
+        match self.is_fungible.get(address)
+        {
+            None => { panic!("The resource {} does not exist!", *address) }
+            Some(b) => { *b }
+        }
+    }
+
+    pub fn generate_owner_badge(&mut self, current_account: &mut Account)
+    {
+        let resource_address = generate_owner_badge();
+        let mut splitter = resource_address.split(":");
+        let true_address = splitter.next().unwrap().to_string();
+        self.add_resource(&"owner_badge".to_string(), true_address, false);
+        self.update_resources_for_account(current_account);
+    }
+
+    pub fn get_owner_badge(&self) -> String
+    {
+        format!("{}:U32#1", *self.get_address("owner_badge"))
     }
 
     fn recorded_name(name: &String) -> String

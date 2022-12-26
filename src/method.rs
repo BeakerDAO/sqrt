@@ -37,9 +37,11 @@ pub enum Arg {
     ResourceAddressArg(String),
     SystemAddressArg(String),
     /// Bucket with resource to send. The String represents the name of the resource and the Decimal the amount to send
-    BucketArg(String, Decimal),
+    FungibleBucketArg(String, Decimal),
+    NonFungibleBucketArg(String, Vec<String>),
     /// Proof of a resource; second argument is the id if it is a NFR
-    ProofArg(String, Option<String>),
+    FungibleProofArg(String, Decimal),
+    NonFungibleProofArg(String, Vec<String>),
     Expression(String),
     Blob(String),
     NonFungibleAddressArg(String, Box<Arg>),
@@ -131,10 +133,16 @@ impl Arg {
                 {
                     String::from("SystemAddress")
                 }
-            Arg::BucketArg(_, _) => {
+            Arg::FungibleBucketArg(_, _) => {
                 String::from("Bucket")
             }
-            Arg::ProofArg(_, _) => {
+            Arg::NonFungibleBucketArg(_,_) => {
+                String::from("Bucket")
+            }
+            Arg::FungibleProofArg(_,_) => {
+                String::from("Proof")
+            }
+            Arg::NonFungibleProofArg(_,_) => {
                 String::from("Proof")
             }
             Arg::Expression(_) =>
@@ -188,7 +196,7 @@ impl Arg {
                     format!("{}{}", generic, self.get_type())
                 }
             Arg::StringArg(_) => { format!("\"{}\"", generic) }
-            Arg::EnumArg(_,_)| Arg::TupleArg(_)| Arg::VecArg(_)| Arg::HashMapArg(_)| Arg::BucketArg(_, _)| Arg::ProofArg(_,_) =>
+            Arg::EnumArg(_,_)| Arg::TupleArg(_)| Arg::VecArg(_)| Arg::HashMapArg(_)| Arg::FungibleBucketArg(_, _)| Arg::NonFungibleBucketArg(_,_)| Arg::FungibleProofArg(_,_)| Arg::NonFungibleProofArg(_,_) =>
                 {
                     format!("{}({})", self.get_type(), generic)
                 }

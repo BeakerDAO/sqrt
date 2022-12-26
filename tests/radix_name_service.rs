@@ -2,7 +2,7 @@
 mod rns_tests {
     use scrypto::prelude::{dec, Decimal};
     use sqrt::blueprint::Blueprint;
-    use sqrt::method::Arg::{AccountAddressArg, BucketArg, ProofArg, StringArg, U8};
+    use sqrt::method::Arg::{AccountAddressArg, FungibleBucketArg, NonFungibleBucketArg, NonFungibleProofArg, StringArg, U8};
     use sqrt::method::{Arg, Method};
     use sqrt::method_args;
     use sqrt::package::Package;
@@ -33,8 +33,8 @@ mod rns_tests {
 
     enum RNSMethods {
         RegisterName(String, String, u8, Decimal),
-        UnregisterName,
-        UpdateAddress(String, Decimal),
+        UnregisterName(String),
+        UpdateAddress(String, String, Decimal),
         WithdrawFees,
     }
 
@@ -42,8 +42,8 @@ mod rns_tests {
         fn name(&self) -> &str {
             match self {
                 RNSMethods::RegisterName(_, _, _, _) => "register_name",
-                RNSMethods::UnregisterName => "unregister_name",
-                RNSMethods::UpdateAddress(_, _) => "update_address",
+                RNSMethods::UnregisterName(_) => "unregister_name",
+                RNSMethods::UpdateAddress(_, _, _) => "update_address",
                 RNSMethods::WithdrawFees => "withdraw_fees",
             }
         }
@@ -55,17 +55,17 @@ mod rns_tests {
                         StringArg(name.clone()),
                         AccountAddressArg(target_address.clone()),
                         U8(*reserve_years),
-                        BucketArg(String::from("radix"), *deposit_amount)
+                        FungibleBucketArg(String::from("radix"), *deposit_amount)
                     ]
                 }
-                RNSMethods::UnregisterName => {
-                    method_args![BucketArg(String::from("DomainName"), Decimal::one())]
+                RNSMethods::UnregisterName(id) => {
+                    method_args![NonFungibleBucketArg(String::from("DomainName"), vec![id.clone()])]
                 }
-                RNSMethods::UpdateAddress(new_address, fee) => {
+                RNSMethods::UpdateAddress(new_address, id,fee) => {
                     method_args![
-                        ProofArg(String::from("DomainName"), Some(String::from("Bytes(\"031b\")"))),
+                        NonFungibleProofArg(String::from("DomainName"), vec![id.clone()]),
                         AccountAddressArg(new_address.clone()),
-                        BucketArg(String::from("radix"), *fee)
+                        FungibleBucketArg(String::from("radix"), *fee)
                     ]
                 }
                 RNSMethods::WithdrawFees => {
@@ -100,7 +100,7 @@ mod rns_tests {
         test_env.publish_package("rns", rns_package);
         test_env.new_component("rns_comp", "rns", "rns", vec![]);
 
-        test_env.get_token("DomainName").unwrap();
+        test_env.get_token("DomainName");
     }
 
     #[test]
@@ -146,7 +146,9 @@ mod rns_tests {
         let owned_nft = test_env.amount_owned_by_current("DomainName");
         assert_eq!(owned_nft, Decimal::one());
 
-        test_env.call_method("rns_comp", RNSMethods::UnregisterName);
+        let ids = test_env.get_non_fungible_ids_for_current("DomainName").unwrap();
+        let id = ids.get(0).unwrap();
+        test_env.call_method("rns_comp", RNSMethods::UnregisterName(id.clone()));
         let owned_nft = test_env.amount_owned_by_current("DomainName");
         assert_eq!(owned_nft, Decimal::zero());
     }
@@ -173,9 +175,12 @@ mod rns_tests {
         assert_eq!(owned_nft, Decimal::one());
 
         test_env.create_account("test");
+
+        let ids = test_env.get_non_fungible_ids_for_current("DomainName").unwrap();
+        let id = ids.get(0).unwrap();
         test_env.call_method(
             "rns_comp",
-            RNSMethods::UpdateAddress(String::from("test"), dec!("15")),
+            RNSMethods::UpdateAddress(String::from("test"), id.clone(), dec!(15)),
         );
     }
 

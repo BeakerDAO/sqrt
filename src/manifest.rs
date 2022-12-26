@@ -30,10 +30,10 @@ impl Manifest {
     {
         let mut args_vec: Vec<String> = Vec::new();
 
-        self.lock_fee(Self::caller_binding(), dec!(100));
+        self.lock_fee(Self::caller_arg(), dec!(100));
         if method.needs_admin_badge()
         {
-            self.create_proof(Self::caller_binding(), Self::admin_badge_binding(), None);
+            self.create_admin_badge_proof(Self::caller_arg(), Self::admin_badge_arg());
         }
 
         match method.args() {
@@ -42,35 +42,41 @@ impl Manifest {
                 for arg in args {
                     match arg
                     {
-                        Arg::BucketArg(_,_) =>
+                        Arg::FungibleBucketArg(_, _) =>
                             {
                                 let amount_arg = format!("arg_{}_amount",self.arg_count);
                                 let resource_arg = format!("arg_{}_resource", self.arg_count);
-                                self.withdraw_by_amount(Self::caller_binding(), amount_arg.clone(), resource_arg.clone());
+                                self.withdraw_by_amount(Self::caller_arg(), amount_arg.clone(), resource_arg.clone());
                                 self.take_from_worktop_by_amount(amount_arg, resource_arg, self.id);
                                 let ret = format!("Bucket(\"{}\")", self.id);
                                 self.id += 1;
                                 args_vec.push(ret);
                             }
-                        Arg::ProofArg(_,opt) =>
+                        Arg::NonFungibleBucketArg(_, _) =>
                             {
-                                let resource_arg;
-                                let opt_id_arg;
-                                match opt
-                                {
-                                    Some(_) =>
-                                        {
-                                            resource_arg = format!("arg_{}_resource", self.arg_count);
-                                            opt_id_arg = Some(format!("arg_{}_id", self.id));
-                                        }
-                                    None =>
-                                        {
-                                            resource_arg = format!("arg_{}", self.arg_count);
-                                            opt_id_arg = None;
-                                        }
-                                }
-
-                                self.create_usable_proof(Self::caller_binding(), resource_arg, opt_id_arg, self.id);
+                                let resource_arg = format!("arg_{}_resource", self.arg_count);
+                                let ids_arg = format!("arg_{}_ids", self.arg_count);
+                                self.withdraw_by_ids(Self::caller_arg(), resource_arg.clone(), ids_arg.clone());
+                                self.take_from_worktop_by_ids(resource_arg, ids_arg, self.id);
+                                let ret = format!("Bucket(\"{}\")", self.id);
+                                self.id += 1;
+                                args_vec.push(ret);
+                            }
+                        Arg::FungibleProofArg(_,_) =>
+                            {
+                                let amount_arg = format!("arg_{}_amount",self.arg_count);
+                                let resource_arg = format!("arg_{}_resource", self.arg_count);
+                                self.create_usable_fungible_proof(Self::caller_arg(), resource_arg, amount_arg, self.id);
+                                let ret = format!("Proof(\"{}\")", self.id);
+                                self.id += 1;
+                                self.has_proofs = true;
+                                args_vec.push(ret);
+                            }
+                        Arg::NonFungibleProofArg(_,_) =>
+                            {
+                                let ids_arg = format!("arg_{}_ids",self.arg_count);
+                                let resource_arg = format!("arg_{}_resource", self.arg_count);
+                                self.create_usable_non_fungible_proof(Self::caller_arg(), resource_arg, ids_arg, self.id);
                                 let ret = format!("Proof(\"{}\")", self.id);
                                 self.id += 1;
                                 self.has_proofs = true;
@@ -94,20 +100,20 @@ impl Manifest {
         }
 
         let inst = Instruction::CallMethod {
-            component_address_generic: Self::component_binding(),
+            component_address_arg: Self::component_arg(),
             method_name: method.name().to_string(),
             args: args_vec,
         };
 
         self.instructions.push(inst);
         self.drop_proofs();
-        self.deposit_batch(Self::caller_binding());
+        self.deposit_batch(Self::caller_arg());
         self
     }
 
     pub fn lock_fee(&mut self, caller_arg: String, amount: Decimal) -> &mut Self {
         let inst = Instruction::CallMethod {
-            component_address_generic: caller_arg,
+            component_address_arg: caller_arg,
             method_name: "lock_fee".to_string(),
             args: vec![format!("Decimal(\"{}\")", amount)],
         };
@@ -123,12 +129,29 @@ impl Manifest {
         bucket_id: u32,
     ) -> &mut Self {
         let inst = Instruction::TakeFromWorktopByAmount {
-            amount_generic: amount_arg,
-            resource_address_generic: resource_address_arg,
+            amount_arg,
+            resource_address_arg,
             bucket_id
         };
         self.needed_resources.push(inst);
 
+        self
+    }
+
+    fn take_from_worktop_by_ids(
+        &mut self,
+        resource_address_arg: String,
+        ids_arg: String,
+        bucket_id: u32
+    ) -> &mut Self
+    {
+        let inst = Instruction::TakeFromWorktopByIds {
+            ids_arg,
+            resource_address_arg,
+            bucket_id
+        };
+
+        self.needed_resources.push(inst);
         self
     }
 
@@ -139,67 +162,118 @@ impl Manifest {
         resource_address_arg: String,
     ) -> &mut Self {
         let inst = Instruction::CallMethod {
-            component_address_generic: account_arg,
+            component_address_arg: account_arg,
             method_name: "withdraw_by_amount".to_string(),
             args: vec![
                 format!("Decimal(\"${{{}}}\")", amount_arg),
                 format!("ResourceAddress(\"${{{}}}\")", resource_address_arg),
-            ],
+            ]
         };
         self.needed_resources.push(inst);
 
         self
     }
 
-    pub fn create_proof(&mut self, account_arg: String, resource_address_arg: String, opt_id_arg: Option<String>) -> &mut Self {
-
-        let resource_arg = format!("ResourceAddress(\"${{{}}}\")", resource_address_arg);
-        let inst_1 = match opt_id_arg
-        {
-            None =>
-                {
-                    Instruction::CallMethod {
-                        component_address_generic: account_arg,
-                        method_name: "create_proof".to_string(),
-                        args: vec![resource_arg]
-                    }
-                }
-            Some(id_arg) =>
-                {
-                    Instruction::CallMethod {
-                        component_address_generic: account_arg,
-                        method_name: "create_proof_by_ids".to_string(),
-                        args: vec![format!("Array<NonFungibleId>(NonFungibleId(${{{}}}))", id_arg), resource_arg]
-                    }
-                }
-        };
-
-        self.needed_resources.push(inst_1);
-
-        self
-    }
-
-    pub fn create_usable_proof(
+    fn withdraw_by_ids(
         &mut self,
         account_arg: String,
         resource_address_arg: String,
-        opt_id_arg: Option<String>,
-        proof_id: u32,
-    ) -> &mut Self {
-        self.create_proof(account_arg, resource_address_arg.clone(), opt_id_arg.clone());
+        ids_arg: String,
+    ) -> &mut Self
+    {
 
-       let inst =  Instruction::CreateProofFromAuthZone {
-           resource_address_generic: resource_address_arg,
-           proof_id
-       };
+        let inst = Instruction::CallMethod {
+            component_address_arg: account_arg,
+            method_name: "withdraw_by_ids".to_string(),
+            args: vec![
+                format!("Array<NonFungibleId>(${{{}}})", ids_arg),
+                format!("ResourceAddress(\"${{{}}}\")", resource_address_arg)
+            ]
+        };
+
         self.needed_resources.push(inst);
+        self
+    }
 
+    pub fn create_admin_badge_proof(&mut self, account_arg: String, resource_address_arg: String) -> &mut Self {
+        let inst = Instruction::CallMethod {
+            component_address_arg: account_arg,
+            method_name: "create_proof".to_string(),
+            args: vec![
+                format!("ResourceAddress(\"${{{}}}\")", resource_address_arg),
+            ]
+        };
+        self.needed_resources.push(inst);
+        self
+    }
+
+    pub fn create_fungible_proof(&mut self, account_arg: String, resource_address_arg: String, amount_arg: String) -> &mut Self {
+        let inst = Instruction::CallMethod {
+            component_address_arg: account_arg,
+            method_name: "create_proof_by_amount".to_string(),
+            args: vec![
+                format!("Decimal(\"${{{}}}\")", amount_arg),
+                format!("ResourceAddress(\"${{{}}}\")", resource_address_arg),
+            ]
+        };
+        self.needed_resources.push(inst);
+        self
+    }
+
+    pub fn create_non_fungible_proof(&mut self, account_arg: String, resource_address_arg: String, id_arg: String) -> &mut Self
+    {
+        let resource_arg = format!("ResourceAddress(\"${{{}}}\")", resource_address_arg);
+        let inst = Instruction::CallMethod {
+            component_address_arg: account_arg,
+            method_name: "create_proof_by_ids".to_string(),
+            args: vec![format!("Array<NonFungibleId>(${{{}}})", id_arg), resource_arg]
+        };
+        self.needed_resources.push(inst);
+        self
+    }
+
+    pub fn create_usable_fungible_proof(
+        &mut self,
+        account_arg: String,
+        resource_address_arg: String,
+        amount_arg: String,
+        proof_id: u32
+    ) -> &mut Self
+    {
+        self.create_fungible_proof(account_arg, resource_address_arg.clone(), amount_arg.clone());
+
+        let inst = Instruction::CreateProofFromAuthZoneByAmount {
+            amount_arg,
+            resource_address_arg,
+            proof_id
+        };
+
+        self.needed_resources.push(inst);
+        self
+    }
+
+    pub fn create_usable_non_fungible_proof(
+        &mut self,
+        account_arg: String,
+        resource_address_arg: String,
+        ids_arg: String,
+        proof_id: u32
+    ) -> &mut Self
+    {
+        self.create_non_fungible_proof(account_arg, resource_address_arg.clone(), ids_arg.clone());
+
+        let inst = Instruction::CreateProofFromAuthZoneByIds {
+            ids_arg,
+            resource_address_arg,
+            proof_id
+        };
+        self.needed_resources.push(inst);
         self
     }
 
     pub fn deposit_batch(&mut self, account_arg: String) -> &mut Self {
         let inst = Instruction::CallMethod {
-            component_address_generic: account_arg,
+            component_address_arg: account_arg,
             method_name: "deposit_batch".to_string(),
             args: vec![String::from("Expression(\"ENTIRE_WORKTOP\")")],
         };
@@ -230,202 +304,18 @@ impl Manifest {
         output
     }
 
-    pub fn caller_binding() -> String
+    pub fn caller_arg() -> String
     {
         String::from("caller_address")
     }
 
-    pub fn component_binding() -> String
+    pub fn component_arg() -> String
     {
         String::from("component_address")
     }
 
-    pub fn admin_badge_binding() -> String
+    pub fn admin_badge_arg() -> String
     {
         String::from("badge_address")
     }
-
-/*
-    fn deal_with_arg(
-        arg: &Arg,
-        arg_nb: u8
-    ) -> String {
-        match arg {
-            Arg::Unit => {
-                format!("()")
-            }
-            Arg::Bool(_) => {
-                format!("{}", b)
-            }
-            Arg::I8(_) => {
-                format!("{}i8", int)
-            }
-            Arg::I16(_) => {
-                format!("{}i16", int)
-            }
-            Arg::I32(_) => {
-                format!("{}i32", int)
-            }
-            Arg::I64(_) => {
-                format!("{}i64", int)
-            }
-            Arg::I128(_) => {
-                format!("{}i128", int)
-            }
-            Arg::U8(_) => {
-                format!("{}u8", uint)
-            }
-            Arg::U16(_) => {
-                format!("{}u16", uint)
-            }
-            Arg::U32(_) => {
-                format!("{}u32", uint)
-            }
-            Arg::U64(_) => {
-                format!("{}u64", uint)
-            }
-            Arg::U128(_) => {
-                format!("{}u128", uint)
-            }
-            Arg::StringArg(_) => {
-                format!("\"{}\"", str)
-            }
-            Arg::Struct(_, _) => {
-                format!(
-                    "Struct({})",
-                    self.deal_with_arg_vec(fields, caller_address, tokens)
-                )
-            }
-            Arg::OptionArg(_, opt) => match opt {
-                None => {
-                    format!("None")
-                }
-                Some(arg) => {
-                    format!("Some({})", self.deal_with_arg(arg, caller_address, tokens))
-                }
-            },
-            Arg::BoxArg(arg) => {
-                format!("Box({})", self.deal_with_arg(arg, caller_address, tokens))
-            }
-            Arg::TupleArg(elements) => {
-                format!(
-                    "Tuple({})",
-                    self.deal_with_arg_vec(elements, caller_address, tokens)
-                )
-            }
-            Arg::ResultArg(_, _, res) => match (*res).deref() {
-                Ok(arg) => {
-                    format!("Ok({})", self.deal_with_arg(arg, caller_address, tokens))
-                }
-                Err(arg) => {
-                    format!("Err({})", self.deal_with_arg(arg, caller_address, tokens))
-                }
-            },
-            Arg::VecArg(elements) => {
-                let el_type = match elements.first() {
-                    None => String::from("()"),
-                    Some(arg) => arg.get_type(),
-                };
-
-                format!(
-                    "Vec<{}>({})",
-                    el_type,
-                    self.deal_with_arg_vec(elements, caller_address, tokens)
-                )
-            }
-            Arg::HashMapArg(_, _, map) => {
-                let elements = Vec::from_iter(map.iter());
-                let el_type = match elements.first() {
-                    None => String::from("(),()"),
-                    Some((key_arg, value_arg)) => {
-                        format!("{},{}", key_arg.get_type(), value_arg.get_type())
-                    }
-                };
-
-                let mut vec_str: Vec<Arg> = vec![];
-                for element in elements {
-                    vec_str.push(element.0.clone());
-                    vec_str.push(element.1.clone());
-                }
-                format!(
-                    "Map<{}>({})",
-                    el_type,
-                    self.deal_with_arg_vec(&vec_str, caller_address, tokens)
-                )
-            }
-            Arg::DecimalArg(dec) => {
-                format!("Decimal(\"{}\")", dec)
-            }
-            Arg::PreciseDecimalArg(predec) => {
-                format!("PreciseDecimal(\"{}\")", predec)
-            }
-            Arg::PackageAddressArg(str) => {
-                format!("PackageAddress(\"{}\")", str)
-            }
-            Arg::ComponentAddressArg(str) => {
-                format!("ComponentAddress(\"{}\")", str)
-            }
-            Arg::ResourceAddressArg(str) => {
-                let token_str = tokens.get(&str.to_lowercase()).expect(&format!(
-                    "Could not find token {} in the list of tokens",
-                    str
-                ));
-                format!("ResourceAddress(\"{}\")", token_str)
-            }
-            Arg::NonFungibleAddressArg(str) => {
-                format!("NonFungibleAddress(\"{}\")", str)
-            }
-            Arg::HashArg(str) => {
-                format!("Hash(\"{}\")", str)
-            }
-            Arg::BucketArg(name, amount) => {
-                let token_str = tokens.get(&name.to_lowercase()).expect(&format!(
-                    "Could not find token {} in the list of tokens",
-                    name
-                ));
-
-                self.withdraw_by_amount(caller_address.clone(), amount.clone(), token_str.clone());
-                self.take_from_worktop_by_amount(amount.clone(), token_str.clone(), self.id);
-                let ret = format!("Bucket(\"{}\")", self.id);
-                self.id += 1;
-                ret
-            }
-            Arg::ProofArg(name) => {
-                let token_str = tokens.get(&name.to_lowercase()).expect(&format!(
-                    "Could not find token {} in the list of tokens",
-                    name
-                ));
-                self.create_usable_proof(caller_address.clone(), token_str.clone(), self.id);
-                let ret = format!("Proof(\"{}\")", self.id);
-                self.id += 1;
-                self.has_proofs = true;
-
-                ret
-            }
-            Arg::NonFungibleIdArg(name) => {
-                format!("NonFungibleId(\"{}\")", name)
-            }
-        }
-    }
-
-    fn deal_with_arg_vec(
-        &mut self,
-        vec: &Vec<Arg>,
-        caller_address: &String,
-        tokens: &HashMap<String, String>,
-    ) -> String {
-        let mut vec_str = String::new();
-        for element in vec {
-            vec_str = format!(
-                "{}{}, ",
-                vec_str,
-                self.deal_with_arg(element, caller_address, tokens)
-            );
-        }
-        vec_str.pop();
-        vec_str.pop();
-        vec_str
-    }
-
- */
 }

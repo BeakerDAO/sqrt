@@ -3,20 +3,33 @@ use std::fmt::{Display, Formatter};
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Instruction {
     TakeFromWorktopByAmount {
-        amount_generic:  String,
-        resource_address_generic: String,
+        amount_arg:  String,
+        resource_address_arg: String,
         bucket_id: u32,
     },
 
+    TakeFromWorktopByIds {
+        ids_arg: String,
+        resource_address_arg: String,
+        bucket_id: u32
+    },
+
     CallMethod {
-        component_address_generic: String,
+        component_address_arg: String,
         method_name: String,
         args: Vec<String>,
     },
 
-    CreateProofFromAuthZone {
-        resource_address_generic: String,
+    CreateProofFromAuthZoneByAmount {
+        amount_arg: String,
+        resource_address_arg: String,
         proof_id: u32,
+    },
+
+    CreateProofFromAuthZoneByIds {
+        ids_arg: String,
+        resource_address_arg: String,
+        proof_id: u32
     },
 
     DropAllProofs,
@@ -26,7 +39,7 @@ impl Display for Instruction {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             Instruction::TakeFromWorktopByAmount {
-                amount_generic, resource_address_generic, bucket_id
+                amount_arg, resource_address_arg, bucket_id
             } => {
                 write!(
                     f,
@@ -34,18 +47,32 @@ impl Display for Instruction {
                                \tDecimal(\"${{{}}}\")\n\
                                \tResourceAddress(\"${{{}}}\")\n\
                                \tBucket(\"{}\");",
-                    amount_generic, resource_address_generic, bucket_id
+                    amount_arg, resource_address_arg, bucket_id
                 )
             }
 
+            Instruction::TakeFromWorktopByIds {
+                resource_address_arg, ids_arg, bucket_id
+            } =>
+                {
+                    write!(
+                        f,
+                        "TAKE_FROM_WORKTOP_BY_IDS\n\
+                               \tArray<NonFungibleId>(\"${{{}}}\")\n\
+                               \tResourceAddress(\"${{{}}}\")\n\
+                               \tBucket(\"{}\");",
+                        ids_arg, resource_address_arg, bucket_id
+                    )
+                }
+
             Instruction::CallMethod {
-                component_address_generic, method_name, args
+                component_address_arg, method_name, args
             } => {
                 let mut arg_str = String::new();
                 for arg in args {
                     arg_str = format!(
                         "{}\n\
-                                           \t{}",
+                         \t{}",
                         arg_str, arg
                     );
                 }
@@ -55,19 +82,36 @@ impl Display for Instruction {
                                \tComponentAddress(\"${{{}}}\")\n\
                                \t\"{}\"\
                                {};",
-                    component_address_generic, method_name, arg_str
+                    component_address_arg, method_name, arg_str
                 )
             }
-            Instruction::CreateProofFromAuthZone {
-                resource_address_generic,
+            Instruction::CreateProofFromAuthZoneByAmount {
+                amount_arg,
+                resource_address_arg,
                 proof_id,
             } => {
                 write!(
                     f,
-                    "CREATE_PROOF_FROM_AUTH_ZONE\n\
+                    "CREATE_PROOF_FROM_AUTH_ZONE_BY_AMOUNT\n\
+                              \tDecimal(\"${{{}}}\")
                               \tResourceAddress(\"${{{}}}\")\n\
                               \tProof(\"{}\");",
-                    resource_address_generic, proof_id
+                    amount_arg, resource_address_arg, proof_id
+                )
+            }
+
+            Instruction::CreateProofFromAuthZoneByIds {
+                ids_arg,
+                resource_address_arg,
+                proof_id
+            } => {
+                write!(
+                    f,
+                    "CREATE_PROOF_FROM_AUTH_ZONE_BY_IDS\n\
+                               \tArray<NonFungibleId>(${{{}}})\n\
+                               \tResourceAddress(\"${{{}}}\")\n\
+                               \tProof(\"{}\");",
+                    ids_arg, resource_address_arg, proof_id
                 )
             }
 

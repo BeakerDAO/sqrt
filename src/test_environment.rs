@@ -3,7 +3,7 @@ use crate::component::Component;
 use crate::manifest::Manifest;
 use crate::method::{Arg, Method};
 use crate::package::Package;
-use crate::utils::{create_dir, generate_owner_badge, manifest_exists, run_command, run_manifest, transfer, write_manifest, write_transfer};
+use crate::utils::{create_dir, manifest_exists, run_command, run_manifest, transfer, write_manifest, write_transfer};
 use crate::RADIX_TOKEN;
 use lazy_static::lazy_static;
 use regex::Regex;
@@ -18,14 +18,15 @@ pub struct TestEnvironment {
     components: HashMap<String, Component>,
     current_account: String,
     resource_manager: ResourceManager,
-    owner_badge: String,
 }
 
 impl TestEnvironment {
     pub fn new() -> TestEnvironment {
         Self::reset();
 
-        let default_account = Account::new();
+        let mut default_account = Account::new();
+        let mut resource_manager = ResourceManager::new();
+        resource_manager.generate_owner_badge(&mut default_account);
         let mut accounts = HashMap::new();
         accounts.insert(String::from("default"), default_account);
         let mut tokens = HashMap::new();
@@ -36,8 +37,7 @@ impl TestEnvironment {
             packages: HashMap::new(),
             components: HashMap::new(),
             current_account: String::from("default"),
-            resource_manager: ResourceManager::new(),
-            owner_badge: generate_owner_badge(),
+            resource_manager,
         }
     }
 
@@ -51,7 +51,7 @@ impl TestEnvironment {
         }
     }
 
-    pub fn create_fixed_supply_token(&mut self, name: &str, initial_supply: Decimal) -> String {
+    pub fn create_fixed_supply_token(&mut self, name: &str, initial_supply: Decimal) {
         let name = String::from(name);
         if self.resource_manager.exists(&name) {
                 panic!("A token with same name already exists!")
@@ -70,9 +70,8 @@ impl TestEnvironment {
 
                 let resource_address = String::from(&ADDRESS_RE.captures(&output).unwrap()[1]);
 
-                self.resource_manager.update_resources();
+                self.resource_manager.add_resource(&name, resource_address, true);
                 self.update_current_account();
-                resource_address
             }
 
     }
@@ -90,7 +89,7 @@ impl TestEnvironment {
                     .arg("publish")
                     .arg(package.path())
                     .arg("--owner-badge")
-                    .arg(self.owner_badge.clone()),
+                    .arg(self.resource_manager.get_owner_badge()),
                 false,
             );
 
@@ -160,8 +159,8 @@ impl TestEnvironment {
                     let comp = Component::from(component_address, package.path(), opt_badge);
                     self.components.insert(String::from(name), comp);
                     write_transfer(package.path());
-                    self.update_current_account();
                     self.resource_manager.update_resources();
+                    self.update_current_account();
                 }
                 None => {
                     panic!(
@@ -202,10 +201,10 @@ impl TestEnvironment {
                 let account_comp = String::from(self.get_current_account().address());
 
                 let mut env_binding = vec![];
-                env_binding.push((Manifest::caller_binding(), account_comp));
-                env_binding.push((Manifest::component_binding(), component_address));
+                env_binding.push((Manifest::caller_arg(), account_comp));
+                env_binding.push((Manifest::component_arg(), component_address));
                 if method.needs_admin_badge() {
-                    env_binding.push((Manifest::admin_badge_binding(), comp.admin_badge().as_ref().unwrap().clone()))
+                    env_binding.push((Manifest::admin_badge_arg(), comp.admin_badge().as_ref().unwrap().clone()))
                 }
 
                 let mut arg_count = 0u32;
@@ -218,32 +217,49 @@ impl TestEnvironment {
                             match arg
                             {
                                 Arg::Unit => {}
-                                Arg::BucketArg(name, amount) =>
+                                Arg::FungibleBucketArg(name, amount) =>
                                     {
                                         let resource_arg_name = format!("arg_{}_resource",arg_count);
                                         let amount_arg_name = format!("arg_{}_amount", arg_count);
                                         env_binding.push((resource_arg_name, self.get_token(&name).clone()));
                                         env_binding.push((amount_arg_name, amount.to_string()));
                                     }
-                                Arg::ProofArg(name, opt_id) =>
+                                Arg::NonFungibleBucketArg(name, ids) =>
                                     {
-                                        match opt_id
+                                        let resource_arg_name = format!("arg_{}_resource", arg_count);
+                                        env_binding.push((resource_arg_name, self.get_token(&name).clone()));
+
+                                        let ids_arg_name = format!("arg_{}_ids", arg_count);
+                                        let mut ids_arg_value = String::new();
+                                        for id_value in ids
                                         {
-                                            None =>
-                                                {
-                                                    let resource_arg_name = format!("arg_{}",arg_count);
-                                                    env_binding.push((resource_arg_name, self.get_token(&name).clone()));
-                                                }
-
-                                            Some(id_value) =>
-                                                {
-                                                    let resource_arg_name = format!("arg_{}_resource", arg_count);
-                                                    let id_arg_name = format!("arg_{}_id", arg_count);
-
-                                                    env_binding.push((resource_arg_name, self.get_token(&name).clone()));
-                                                    env_binding.push((id_arg_name, id_value));
-                                                }
+                                            ids_arg_value = format!("{}NonFungibleId({}) ,", ids_arg_value, id_value);
                                         }
+                                        ids_arg_value.pop();
+                                        ids_arg_value.pop();
+                                        env_binding.push((ids_arg_name, ids_arg_value));
+                                    }
+                                Arg::FungibleProofArg(name, amount) =>
+                                    {
+                                        let resource_arg_name = format!("arg_{}_resource",arg_count);
+                                        let amount_arg_name = format!("arg_{}_amount", arg_count);
+                                        env_binding.push((resource_arg_name, self.get_token(&name).clone()));
+                                        env_binding.push((amount_arg_name, format!("Decimal(\"{}\")", amount)));
+                                    }
+                                Arg::NonFungibleProofArg(name, ids) =>
+                                    {
+                                        let resource_arg_name = format!("arg_{}_resource",arg_count);
+                                        env_binding.push((resource_arg_name, self.get_token(&name).clone()));
+
+                                        let ids_arg_name = format!("arg_{}_ids", arg_count);
+                                        let mut ids_arg_value = String::new();
+                                        for id_value in ids
+                                        {
+                                            ids_arg_value = format!("{}NonFungibleId({}) ,", ids_arg_value, id_value);
+                                        }
+                                        ids_arg_value.pop();
+                                        ids_arg_value.pop();
+                                        env_binding.push((ids_arg_name, ids_arg_value));
                                     }
                                 _ => { env_binding.push(self.get_binding_for(&arg, arg_count)) }
                             }
@@ -254,8 +270,8 @@ impl TestEnvironment {
 
                 output = run_manifest(comp.package_path(), method.name(), env_binding);
 
-                self.update_current_account();
                 self.resource_manager.update_resources();
+                self.update_current_account();
             }
         }
 
@@ -362,6 +378,24 @@ impl TestEnvironment {
         }
     }
 
+    pub fn get_non_fungible_ids_for(&self, account: &str, resource: &str) -> Option<&Vec<String>>
+    {
+        match self.accounts.get(account) {
+            None => {
+                panic!("The account {} does not exist", account)
+            }
+            Some(acc) =>
+                {
+                    acc.get_non_fungibles_ids(self.resource_manager.get_address(resource))
+                }
+        }
+    }
+
+    pub fn get_non_fungible_ids_for_current(&self, resource: &str) -> Option<&Vec<String>>
+    {
+        self.get_current_account().get_non_fungibles_ids(self.resource_manager.get_address(resource))
+    }
+
 
     fn create_manifest<M>(path: &str, method: &M)
         where
@@ -455,7 +489,7 @@ impl TestEnvironment {
                    let (_, value) =  self.get_binding_for(arg.as_ref(), arg_count);
                     value
                 }
-            Arg::BucketArg(_, _)| Arg::ProofArg(_,_) => { panic!("This should not happen") }
+            Arg::FungibleBucketArg(_, _)| Arg::NonFungibleBucketArg(_, _) | Arg::FungibleProofArg(_,_) | Arg::NonFungibleProofArg(_,_) => { panic!("This should not happen") }
             Arg::NonFungibleAddressArg(name, arg) =>
                 {
                     let (_, id_value) = self.get_binding_for(arg.as_ref(), 0);

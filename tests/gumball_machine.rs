@@ -45,7 +45,7 @@ mod gumball_tests {
                     method_args![]
                 }
                 GumballMethods::BuyGumball(value) => {
-                    method_args![Arg::BucketArg(String::from("radix"), value.clone())]
+                    method_args![Arg::FungibleBucketArg(String::from("radix"), value.clone())]
                 }
             }
         }
@@ -73,7 +73,7 @@ mod gumball_tests {
         test_env.publish_package("gumball", gumball_package);
         test_env.new_component("gumball_comp", "gumball", "gumball", vec![]);
 
-        test_env.get_token("gumball").unwrap();
+        test_env.get_token("gumball");
     }
 
     #[test]

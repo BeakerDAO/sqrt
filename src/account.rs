@@ -69,14 +69,10 @@ impl Account {
         }
     }
 
-    pub fn get_non_fungibles_owned(&self, address: &String) -> Option<&Vec<String>> {
+    pub fn get_non_fungibles_ids(&self, address: &String) -> Option<&Vec<String>> {
         self.non_fungibles.get(address)
     }
 
-    pub fn get_last_non_fungible_id(&self, address: &String) -> Option<&String>
-    {
-        self.non_fungibles.get(address).unwrap().last()
-    }
     pub fn update_fungible(&mut self, address: &String, new_amount: Decimal)
     {
         match self.fungibles.get_mut(address)

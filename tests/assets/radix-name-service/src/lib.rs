@@ -39,6 +39,7 @@ blueprint! {
         ) -> (ComponentAddress, Bucket) {
             let admin_badge = ResourceBuilder::new_fungible()
                 .divisibility(DIVISIBILITY_NONE)
+                .metadata("name", "RNS admin badge")
                 .initial_supply(dec!("1"));
 
             let minter = ResourceBuilder::new_fungible()

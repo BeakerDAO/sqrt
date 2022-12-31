@@ -36,7 +36,7 @@ impl ResourceManager {
                 run_command(Command::new("resim").arg("show").arg(&final_address), false);
 
             lazy_static! {
-                static ref NAME_RE: Regex = Regex::new(r#"name: (\w*)"#).unwrap();
+                static ref NAME_RE: Regex = Regex::new(r#"name: (.*)"#).unwrap();
             }
 
             lazy_static! {
@@ -45,13 +45,14 @@ impl ResourceManager {
 
             match &NAME_RE.captures(&output_show) {
                 None => {}
-                Some(name) => {
+                Some(catch_name) => {
+                    let name = String::from(&catch_name[1]);
                     let is_fungible = FUNGIBLE_RE.is_match(&output_show);
                     if !is_fungible {
                         let mut splitter = final_address.split(":");
                         final_address = splitter.next().unwrap().to_string();
                     }
-                    self.add_resource(&String::from(&name[1]), final_address, is_fungible)
+                    self.add_resource(&name, final_address, is_fungible)
                 }
             }
         }

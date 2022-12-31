@@ -106,7 +106,7 @@ mod rns_tests {
         test_env.publish_package("rns", rns_package);
         test_env.new_component("rns_comp", "rns", vec![]);
 
-        test_env.get_token("DomainName");
+        test_env.get_resource("DomainName");
     }
 
     #[test]
@@ -151,7 +151,7 @@ mod rns_tests {
         assert_eq!(owned_nft, Decimal::one());
 
         let ids = test_env
-            .get_non_fungible_ids_for_current("DomainName")
+            .get_non_fungible_ids_owned_by_current("DomainName")
             .unwrap();
         let id = ids.get(0).unwrap();
         test_env.call_method(RNSMethods::UnregisterName(id.clone()));
@@ -182,7 +182,7 @@ mod rns_tests {
         test_env.create_account("test");
 
         let ids = test_env
-            .get_non_fungible_ids_for_current("DomainName")
+            .get_non_fungible_ids_owned_by_current("DomainName")
             .unwrap();
         let id = ids.get(0).unwrap();
         test_env.call_method(

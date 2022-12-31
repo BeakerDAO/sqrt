@@ -1,6 +1,9 @@
+//! Defines what is a Package
+
 use crate::blueprint::Blueprint;
 use std::collections::HashMap;
 
+/// Defines a Package to be tested
 pub struct Package {
     blueprints: HashMap<String, Box<dyn Blueprint>>,
     address: String,
@@ -8,6 +11,8 @@ pub struct Package {
 }
 
 impl Package {
+
+    ///
     pub fn new(path: &str) -> Package {
         Package {
             blueprints: HashMap::new(),

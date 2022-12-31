@@ -1,11 +1,14 @@
+//! Defines methods that can be called for a blueprint
+
 use scrypto::prelude::{Decimal, PreciseDecimal};
 use std::collections::HashMap;
 
+/// Trait to implement to declare a new blueprint method
 pub trait Method {
-    /// Returns the name of the blueprint method
+    /// Returns the name of the method
     fn name(&self) -> &str;
 
-    /// Returns the arguments of the blueprint method
+    /// Returns the arguments of the method
     fn args(&self) -> Option<Vec<Arg>>;
 
     /// Return whether the function needs an admin badge to get called
@@ -13,6 +16,7 @@ pub trait Method {
 }
 
 #[derive(Clone)]
+/// Possible arguments for a method call
 pub enum Arg {
     Unit,
     Bool(bool),
@@ -27,20 +31,31 @@ pub enum Arg {
     U64(u64),
     U128(u128),
     StringArg(String),
+    /// Enum Argument. The [String] should be the name of the variant of the Enum and the [Vec] the arguments of the variant.
     EnumArg(String, Vec<Arg>),
+    /// Represents a Tuple. The [Vec] should contain the content of the Tuple as other `Arg`s
     TupleArg(Vec<Arg>),
+    /// Represents a Vec. The [Vec] should contain the content of the Tuple as other `Arg`s
     VecArg(Vec<Arg>),
+    /// Represents a Hashmap.
     HashMapArg(HashMap<Arg, Arg>),
+    /// Represents a PackageAddress. The [String] should contain the name of the Package stored by the current TestEnvironment(**NOT** its address)
     PackageAddressArg(String),
+    /// Represents a ComponentAddress. The [String] should contain the name of the Component stored by the current TestEnvironment(**NOT** its address)
     ComponentAddressArg(String),
+    /// Represents the ComponentAddress of an account. The [String] should contain the name of the Account stored by the current TestEnvironment(**NOT** its address)
     AccountAddressArg(String),
+    /// Represents a ResourceAddress. The [String] should contain the name of the Resource stored by the current TestEnvironment(**NOT** its address)
     ResourceAddressArg(String),
+    /// Represents a SystemAddress, which address is contained in the [String]
     SystemAddressArg(String),
-    /// Bucket with resource to send. The String represents the name of the resource and the Decimal the amount to send
+    /// Represents a Bucket containing some Non Fungible Resource. The [String] should be the name of the resource according to the TestEnvironment (**NOT** the ResourceAddress) and the [Decimal] is the amount to put in the Bucket
     FungibleBucketArg(String, Decimal),
+    /// Represents a Bucket containing some Fungible Resource with given ids. The [String] should be the name of the resource according to the TestEnvironment (**NOT** the ResourceAddress) and the [Vec] should contain the ids of the NFR to put inside the Bucket
     NonFungibleBucketArg(String, Vec<String>),
-    /// Proof of a resource; second argument is the id if it is a NFR
+    /// Represents a Proof a Fungible Resource. The [String] should be the name of the resource according to the TestEnvironment (**NOT** the ResourceAddress) and the [Decimal] the amount to use as proof
     FungibleProofArg(String, Decimal),
+    /// Represents a Proof a Non Fungible Resource of given ids. The [String] should be the name of the resource according to the TestEnvironment (**NOT** the ResourceAddress) and the [Vec] should contain the ids of the NFR to build a proof of
     NonFungibleProofArg(String, Vec<String>),
     Expression(String),
     Blob(String),
@@ -56,6 +71,8 @@ pub enum Arg {
 }
 
 impl Arg {
+
+    /// Returns the type of an `Arg` according to Transaction Manifests
     pub fn get_type(&self) -> String {
         match self {
             Arg::Unit => String::from("()"),
@@ -104,6 +121,7 @@ impl Arg {
         }
     }
 
+    /// Returns the generic form of an `Arg` for a Transaction Manifest
     pub fn to_generic(&self, arg_count: u32) -> String {
         let generic = format!("${{arg_{}}}", arg_count);
         match self {

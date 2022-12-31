@@ -62,8 +62,8 @@ mod hello_tests {
         test_env.new_component("hello_comp", "hello", vec![]);
 
         // Check that tokens have been added to list
-        test_env.get_token("HelloToken");
-        test_env.get_token("test");
+        test_env.get_resource("HelloToken");
+        test_env.get_resource("test");
     }
 
     #[test]

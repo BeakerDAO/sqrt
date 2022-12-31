@@ -1,3 +1,6 @@
+//! Defines traits to be implemented to declare a new blueprint
+
+/// Trait to implement for a new blueprint
 pub trait Blueprint {
     /// Returns the name of the function to instantiate the blueprint as first argument
     /// and a vector of arguments  value to call with

@@ -73,7 +73,7 @@ mod gumball_tests {
         test_env.publish_package("gumball", gumball_package);
         test_env.new_component("gumball_comp", "gumball", vec![]);
 
-        test_env.get_token("gumball");
+        test_env.get_resource("gumball");
     }
 
     #[test]

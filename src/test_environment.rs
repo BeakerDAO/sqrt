@@ -1,3 +1,5 @@
+//! Environment for a test
+
 use crate::account::Account;
 use crate::component::Component;
 use crate::manifest::Manifest;
@@ -7,7 +9,6 @@ use crate::resource_manager::ResourceManager;
 use crate::utils::{
     create_dir, manifest_exists, run_command, run_manifest, write_manifest,
 };
-use crate::RADIX_TOKEN;
 use lazy_static::lazy_static;
 use regex::Regex;
 use scrypto::prelude::Decimal;
@@ -15,6 +16,7 @@ use std::collections::HashMap;
 use std::process::Command;
 use crate::transfer::Deposit;
 
+///
 pub struct TestEnvironment {
     accounts: HashMap<String, Account>,
     packages: HashMap<String, Package>,
@@ -26,6 +28,8 @@ pub struct TestEnvironment {
 }
 
 impl TestEnvironment {
+
+    /// Returns a new TestEnvironment
     pub fn new() -> TestEnvironment {
         Self::reset();
 
@@ -34,8 +38,6 @@ impl TestEnvironment {
         resource_manager.generate_owner_badge(&mut default_account);
         let mut accounts = HashMap::new();
         accounts.insert(String::from("default"), default_account);
-        let mut tokens = HashMap::new();
-        tokens.insert(String::from("radix"), String::from(RADIX_TOKEN));
 
         TestEnvironment {
             accounts,
@@ -48,6 +50,10 @@ impl TestEnvironment {
         }
     }
 
+    /// Creates a new account with a given name
+    ///
+    /// # Arguments
+    /// * `name` - name associated to the account
     pub fn create_account(&mut self, name: &str) -> &str {
         let real_name = String::from(name).to_lowercase();
         if self.accounts.contains_key(&real_name) {
@@ -58,6 +64,11 @@ impl TestEnvironment {
         }
     }
 
+    /// Creates a new token with fixed supply and with a given name
+    ///
+    /// # Arguments
+    /// * `name` - name associated to the token
+    /// * `initial_supply` - initial supply for the token
     pub fn create_fixed_supply_token(&mut self, name: &str, initial_supply: Decimal) {
         let name = String::from(name);
         if self.resource_manager.exists(&name) {
@@ -82,6 +93,11 @@ impl TestEnvironment {
         }
     }
 
+    /// Publishes a new package to resim and the test environment
+    ///
+    /// # Arguments
+    /// * `name` - name associated to the package
+    /// * `package` - package to publish
     pub fn publish_package(&mut self, name: &str, mut package: Package) {
         let real_name = String::from(name).to_lowercase();
 
@@ -116,6 +132,12 @@ impl TestEnvironment {
         }
     }
 
+    /// Creates a new Component of a given blueprint
+    ///
+    /// # Arguments
+    /// * `name` - name associated to the component
+    /// * `blueprint_name` - name of the blueprint
+    /// * `args_values` - value of the arguments needed to instantitate the Component
     pub fn new_component(
         &mut self,
         name: &str,
@@ -189,6 +211,10 @@ impl TestEnvironment {
         }
     }
 
+    /// Calls a given method of the current component
+    ///
+    /// # Arguments
+    /// * `method` -  [Method] to call
     pub fn call_method<M>(&mut self, method: M)
     where
         M: Method,
@@ -196,6 +222,11 @@ impl TestEnvironment {
         self.call_method_with_output(method);
     }
 
+
+    /// Calls a given method of the current component and returns the output of the transaction
+    ///
+    /// # Arguments
+    /// * `method` -  [Method] to call
     pub fn call_method_with_output<M>(&mut self, method: M) -> String
     where
         M: Method,
@@ -212,10 +243,16 @@ impl TestEnvironment {
         output
     }
 
-    pub fn transfer_to(&mut self, account: &str, token: &str, amount: Decimal) {
-        match self.accounts.get(account) {
+    /// Transfers a given amount of tokens from the current account to a given account
+    ///
+    /// # Arguments
+    /// * `account_name` - name associated to the receiver
+    /// * `token` -  name associated to the token to transfer
+    /// * `amount` - amount of the token to transfer
+    pub fn transfer_to(&mut self, account_name: &str, token: &str, amount: Decimal) {
+        match self.accounts.get(account_name) {
             None => {
-                panic!("Account {} does not exist", account)
+                panic!("Account {} does not exist", account_name)
             }
             Some(acc) => {
                 let account_address = acc.address().to_string();
@@ -239,16 +276,13 @@ impl TestEnvironment {
                 }
             }
         }
-        self.resource_manager.update_resources_for_account(self.accounts.get_mut(account).unwrap());
+        self.resource_manager.update_resources_for_account(self.accounts.get_mut(account_name).unwrap());
     }
 
-
-
-    fn update_current_account(&mut self) {
-        let account = self.accounts.get_mut(&self.current_account).unwrap();
-        self.resource_manager.update_resources_for_account(account);
-    }
-
+    /// Sets the epoch to the given number
+    ///
+    /// # Arguments
+    /// * `epoch` - new epoch
     pub fn set_current_epoch(&mut self, epoch: u64) {
         run_command(
             Command::new("resim")
@@ -258,8 +292,12 @@ impl TestEnvironment {
         );
     }
 
-    pub fn set_current_account(&mut self, name: &str) {
-        let real_name = String::from(name).to_lowercase();
+    /// Sets the current account to be used
+    ///
+    /// # Arguments
+    /// * `account_name` -  name associated to the account to use as current account
+    pub fn set_current_account(&mut self, account_name: &str) {
+        let real_name = String::from(account_name).to_lowercase();
         let account = self
             .accounts
             .get(&real_name)
@@ -275,53 +313,72 @@ impl TestEnvironment {
         self.current_account = real_name;
     }
 
-    pub fn get_current_account(&self) -> &Account {
-        self.accounts.get(&self.current_account).unwrap()
-    }
-
-    pub fn get_token(&self, name: &str) -> &String {
+    /// Returns the address of a given Resource
+    ///
+    /// # Arguments
+    /// * `name` -  name associated to the resource
+    pub fn get_resource(&self, name: &str) -> &String {
         self.resource_manager.get_address(name)
     }
 
-    pub fn get_account(&self, name: &str) -> Option<&Account> {
-        self.accounts.get(name)
-    }
-
-    pub fn amount_owned_by(&self, account: &str, token: &str) -> Decimal {
-        match self.accounts.get(account) {
+    /// Returns the amount of a given Resource owned by a given account
+    ///
+    /// # Arguments
+    /// * `account_name` -  name associated to the account
+    /// * `resource_name` - name associated to the resource
+    pub fn amount_owned_by(&self, account_name: &str, resource_name: &str) -> Decimal {
+        match self.accounts.get(account_name) {
             None => {
-                panic!("The account {} does not exist", account)
+                panic!("The account {} does not exist", account_name)
             }
-            Some(acc) => acc.amount_owned(self.get_token(token)),
+            Some(acc) => acc.amount_owned(self.get_resource(resource_name)),
         }
     }
 
-    pub fn amount_owned_by_current(&self, token: &str) -> Decimal {
+    /// Returns the amount of a given Resource owned by the current account
+    ///
+    /// # Arguments
+    /// * `resource_name` - name associated to the resource
+    pub fn amount_owned_by_current(&self, resource_name: &str) -> Decimal {
         self.get_current_account()
-            .amount_owned(self.get_token(token))
+            .amount_owned(self.get_resource(resource_name))
     }
 
-    pub fn get_component(&self, name: &str) -> Option<&str> {
-        match self.components.get(name) {
+    /// Returns the address of a given component
+    ///
+    /// # Arguments
+    /// * `component_name` -  name associated to the component
+    pub fn get_component(&self, component_name: &str) -> Option<&str> {
+        match self.components.get(component_name) {
             None => None,
             Some(comp) => Some(comp.address()),
         }
     }
 
-    pub fn get_non_fungible_ids_for(&self, account: &str, resource: &str) -> Option<&Vec<String>> {
-        match self.accounts.get(account) {
+    /// Returns the ids owned by a given account for a given Non Fungible Resource
+    ///
+    /// # Arguments
+    /// * `account_name` -  name associated to the account
+    /// * `resource_name` - name associated to the resource
+    pub fn get_non_fungible_ids_owned_by(&self, account_name: &str, resource_name: &str) -> Option<&Vec<String>> {
+        match self.accounts.get(account_name) {
             None => {
-                panic!("The account {} does not exist", account)
+                panic!("The account {} does not exist", account_name)
             }
-            Some(acc) => acc.get_non_fungibles_ids(self.resource_manager.get_address(resource)),
+            Some(acc) => acc.get_non_fungibles_ids(self.resource_manager.get_address(resource_name)),
         }
     }
 
-    pub fn get_non_fungible_ids_for_current(&self, resource: &str) -> Option<&Vec<String>> {
+    /// Returns the ids owned by the current account for a given Non Fungible Resource
+    ///
+    /// # Arguments
+    /// * `resource_name` - name associated to the resource
+    pub fn get_non_fungible_ids_owned_by_current(&self, resource: &str) -> Option<&Vec<String>> {
         self.get_current_account()
             .get_non_fungibles_ids(self.resource_manager.get_address(resource))
     }
 
+    /// Returns a reference to the current package
     pub fn get_current_package(&self) -> &Package
     {
         if self.current_package.is_none()
@@ -333,6 +390,10 @@ impl TestEnvironment {
         self.packages.get(current).unwrap()
     }
 
+    /// Sets the current package to be used
+    ///
+    /// # Arguments
+    /// * `package_name` -  name associated to the package to use as current package
     pub fn set_current_package(&mut self, package_name: &str)
     {
         let real_name = String::from(package_name).to_lowercase();
@@ -346,6 +407,7 @@ impl TestEnvironment {
         }
     }
 
+    /// Returns a reference to the current component
     pub fn get_current_component(&self) -> &Component
     {
         if self.current_component.is_none()
@@ -357,6 +419,10 @@ impl TestEnvironment {
         self.components.get(current).unwrap()
     }
 
+    /// Sets the current component to be used
+    ///
+    /// # Arguments
+    /// * `component_name` -  name associated to the component to use as current component
     pub fn set_current_component(&mut self, component_name: &str)
     {
         let real_name = String::from(component_name).to_lowercase();
@@ -368,6 +434,19 @@ impl TestEnvironment {
                     self.current_component = Some(real_name);
                 }
         }
+    }
+
+    fn update_current_account(&mut self) {
+        let account = self.accounts.get_mut(&self.current_account).unwrap();
+        self.resource_manager.update_resources_for_account(account);
+    }
+
+    fn get_current_account(&self) -> &Account {
+        self.accounts.get(&self.current_account).unwrap()
+    }
+
+    fn get_account(&self, name: &str) -> Option<&Account> {
+        self.accounts.get(name)
     }
 
     fn create_manifest<M>(path: &str, method: &M)
@@ -544,13 +623,13 @@ impl TestEnvironment {
                             let resource_arg_name = format!("arg_{}_resource", arg_count);
                             let amount_arg_name = format!("arg_{}_amount", arg_count);
                             env_binding
-                                .push((resource_arg_name, self.get_token(&name).clone()));
+                                .push((resource_arg_name, self.get_resource(&name).clone()));
                             env_binding.push((amount_arg_name, amount.to_string()));
                         }
                         Arg::NonFungibleBucketArg(name, ids) => {
                             let resource_arg_name = format!("arg_{}_resource", arg_count);
                             env_binding
-                                .push((resource_arg_name, self.get_token(&name).clone()));
+                                .push((resource_arg_name, self.get_resource(&name).clone()));
 
                             let ids_arg_name = format!("arg_{}_ids", arg_count);
                             let mut ids_arg_value = String::new();
@@ -568,7 +647,7 @@ impl TestEnvironment {
                             let resource_arg_name = format!("arg_{}_resource", arg_count);
                             let amount_arg_name = format!("arg_{}_amount", arg_count);
                             env_binding
-                                .push((resource_arg_name, self.get_token(&name).clone()));
+                                .push((resource_arg_name, self.get_resource(&name).clone()));
                             env_binding.push((
                                 amount_arg_name,
                                 format!("Decimal(\"{}\")", amount),
@@ -577,7 +656,7 @@ impl TestEnvironment {
                         Arg::NonFungibleProofArg(name, ids) => {
                             let resource_arg_name = format!("arg_{}_resource", arg_count);
                             env_binding
-                                .push((resource_arg_name, self.get_token(&name).clone()));
+                                .push((resource_arg_name, self.get_resource(&name).clone()));
 
                             let ids_arg_name = format!("arg_{}_ids", arg_count);
                             let mut ids_arg_value = String::new();

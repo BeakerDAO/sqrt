@@ -134,6 +134,7 @@ impl TestEnvironment {
 
     /// Creates a new Component of a given blueprint
     ///
+    /// When instantiating a new component, newly created resources will be added to the TestEnvironment
     /// # Arguments
     /// * `name` - name associated to the component
     /// * `blueprint_name` - name of the blueprint

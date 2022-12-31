@@ -104,7 +104,7 @@ mod rns_tests {
         let mut rns_package = Package::new("tests/assets/radix-name-service");
         rns_package.add_blueprint("rns", rns_blueprint);
         test_env.publish_package("rns", rns_package);
-        test_env.new_component("rns_comp", "rns", "rns", vec![]);
+        test_env.new_component("rns_comp", "rns", vec![]);
 
         test_env.get_token("DomainName");
     }
@@ -116,10 +116,9 @@ mod rns_tests {
         let mut rns_package = Package::new("tests/assets/radix-name-service");
         rns_package.add_blueprint("rns", rns_blueprint);
         test_env.publish_package("rns", rns_package);
-        test_env.new_component("rns_comp", "rns", "rns", vec![]);
+        test_env.new_component("rns_comp", "rns", vec![]);
 
         test_env.call_method(
-            "rns_comp",
             RNSMethods::RegisterName(
                 String::from("test.xrd"),
                 String::from("default"),
@@ -138,10 +137,9 @@ mod rns_tests {
         let mut rns_package = Package::new("tests/assets/radix-name-service");
         rns_package.add_blueprint("rns", rns_blueprint);
         test_env.publish_package("rns", rns_package);
-        test_env.new_component("rns_comp", "rns", "rns", vec![]);
+        test_env.new_component("rns_comp", "rns", vec![]);
 
         test_env.call_method(
-            "rns_comp",
             RNSMethods::RegisterName(
                 String::from("test.xrd"),
                 String::from("default"),
@@ -156,7 +154,7 @@ mod rns_tests {
             .get_non_fungible_ids_for_current("DomainName")
             .unwrap();
         let id = ids.get(0).unwrap();
-        test_env.call_method("rns_comp", RNSMethods::UnregisterName(id.clone()));
+        test_env.call_method(RNSMethods::UnregisterName(id.clone()));
         let owned_nft = test_env.amount_owned_by_current("DomainName");
         assert_eq!(owned_nft, Decimal::zero());
     }
@@ -168,10 +166,9 @@ mod rns_tests {
         let mut rns_package = Package::new("tests/assets/radix-name-service");
         rns_package.add_blueprint("rns", rns_blueprint);
         test_env.publish_package("rns", rns_package);
-        test_env.new_component("rns_comp", "rns", "rns", vec![]);
+        test_env.new_component("rns_comp", "rns", vec![]);
 
         test_env.call_method(
-            "rns_comp",
             RNSMethods::RegisterName(
                 String::from("test.xrd"),
                 String::from("default"),
@@ -189,7 +186,6 @@ mod rns_tests {
             .unwrap();
         let id = ids.get(0).unwrap();
         test_env.call_method(
-            "rns_comp",
             RNSMethods::UpdateAddress(String::from("test"), id.clone(), dec!(15)),
         );
     }
@@ -201,10 +197,9 @@ mod rns_tests {
         let mut rns_package = Package::new("tests/assets/radix-name-service");
         rns_package.add_blueprint("rns", rns_blueprint);
         test_env.publish_package("rns", rns_package);
-        test_env.new_component("rns_comp", "rns", "rns", vec![]);
+        test_env.new_component("rns_comp", "rns", vec![]);
 
         test_env.call_method(
-            "rns_comp",
             RNSMethods::RegisterName(
                 String::from("test.xrd"),
                 String::from("default"),
@@ -215,7 +210,7 @@ mod rns_tests {
         let owned_nft = test_env.amount_owned_by_current("DomainName");
         assert_eq!(owned_nft, Decimal::one());
 
-        test_env.call_method("rns_comp", RNSMethods::WithdrawFees);
+        test_env.call_method(RNSMethods::WithdrawFees);
     }
 
     #[test]
@@ -226,10 +221,9 @@ mod rns_tests {
         let mut rns_package = Package::new("tests/assets/radix-name-service");
         rns_package.add_blueprint("rns", rns_blueprint);
         test_env.publish_package("rns", rns_package);
-        test_env.new_component("rns_comp", "rns", "rns", vec![]);
+        test_env.new_component("rns_comp", "rns", vec![]);
 
         test_env.call_method(
-            "rns_comp",
             RNSMethods::RegisterName(
                 String::from("test.xrd"),
                 String::from("default"),
@@ -243,7 +237,7 @@ mod rns_tests {
         test_env.create_account("test");
         test_env.set_current_account("test");
 
-        test_env.call_method("rns_comp", RNSMethods::WithdrawFees);
+        test_env.call_method(RNSMethods::WithdrawFees);
     }
 
     #[test]

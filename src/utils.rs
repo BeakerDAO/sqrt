@@ -90,19 +90,6 @@ pub fn run_manifest(
     )
 }
 
-pub fn transfer(from: &str, to: &str, asset: &str, amount: &str) -> String {
-    run_command(
-        Command::new("resim")
-            .arg("run")
-            .arg("rtm/transfer.rtm")
-            .env("account1", from)
-            .env("account2", to)
-            .env("asset", asset)
-            .env("amount", amount),
-        true,
-    )
-}
-
 pub fn manifest_exists(method_name: &str, path: &str) -> bool {
     let current_dir = env::current_dir().expect("Could not find current directory");
     let path = format!(
@@ -113,38 +100,6 @@ pub fn manifest_exists(method_name: &str, path: &str) -> bool {
         ".rtm"
     );
     Path::new(&path).exists()
-}
-
-pub fn write_transfer(path: &str) {
-    let transfer_str = String::from(
-        r#"CALL_METHOD
-    ComponentAddress("${account1}")
-    "lock_fee"
-    Decimal("100");
-
-CALL_METHOD
-    ComponentAddress("${account1}")
-    "withdraw_by_amount"
-    Decimal("${amount}")
-    ResourceAddress("${asset}");
-
-TAKE_FROM_WORKTOP_BY_AMOUNT
-    Decimal("${amount}")
-    ResourceAddress("${asset}")
-    Bucket("Asset");
-
-CALL_METHOD
-    ComponentAddress("${account2}")
-    "deposit"
-    Bucket("Asset");
-
-CALL_METHOD
-    ComponentAddress("${account1}")
-    "deposit_batch"
-    Expression("ENTIRE_WORKTOP");"#,
-    );
-
-    write_manifest(transfer_str, path, "transfer");
 }
 
 pub fn generate_owner_badge() -> String {

@@ -5,8 +5,7 @@ use crate::method::{Arg, Method};
 use crate::package::Package;
 use crate::resource_manager::ResourceManager;
 use crate::utils::{
-    create_dir, manifest_exists, run_command, run_manifest, transfer, write_manifest,
-    write_transfer,
+    create_dir, manifest_exists, run_command, run_manifest, write_manifest,
 };
 use crate::RADIX_TOKEN;
 use lazy_static::lazy_static;
@@ -14,13 +13,16 @@ use regex::Regex;
 use scrypto::prelude::Decimal;
 use std::collections::HashMap;
 use std::process::Command;
+use crate::transfer::Deposit;
 
 pub struct TestEnvironment {
     accounts: HashMap<String, Account>,
     packages: HashMap<String, Package>,
     components: HashMap<String, Component>,
-    current_account: String,
     resource_manager: ResourceManager,
+    current_account: String,
+    current_package: Option<String>,
+    current_component: Option<String>,
 }
 
 impl TestEnvironment {
@@ -39,8 +41,10 @@ impl TestEnvironment {
             accounts,
             packages: HashMap::new(),
             components: HashMap::new(),
-            current_account: String::from("default"),
             resource_manager,
+            current_account: String::from("default"),
+            current_package: None,
+            current_component: None
         }
     }
 
@@ -102,7 +106,11 @@ impl TestEnvironment {
 
             package.set_address(String::from(package_address));
             create_dir(package.path());
-            self.packages.insert(real_name, package);
+            self.packages.insert(real_name.clone(), package);
+
+            if self.current_package.is_none() {
+              self.set_current_package(name);
+            };
         } else {
             panic!("A package with the same name already exists!");
         }
@@ -111,187 +119,106 @@ impl TestEnvironment {
     pub fn new_component(
         &mut self,
         name: &str,
-        package_name: &str,
         blueprint_name: &str,
         args_values: Vec<String>,
     ) {
+        if self.current_package.is_none()
+        {
+            panic!("Please create a package first");
+        }
+
         if self.components.contains_key(name) {
             panic!("A component with the same name already exists!")
         }
 
-        match self.packages.get(package_name) {
-            Some(package) => match package.get_blueprint(blueprint_name) {
-                Some(box_blueprint) => {
-                    let blueprint = box_blueprint.as_ref();
-                    let (inst_name, args) = blueprint.instantiate(args_values);
+        let package = self.get_current_package();
 
-                    let output = run_command(
-                        Command::new("resim")
-                            .arg("call-function")
-                            .arg(package.address())
-                            .arg(blueprint.name())
-                            .arg(inst_name)
-                            .args(args),
-                        false,
-                    );
+        match package.get_blueprint(blueprint_name)
+        {
+            Some(box_blueprint) => {
+                let blueprint = box_blueprint.as_ref();
+                let (inst_name, args) = blueprint.instantiate(args_values);
 
-                    lazy_static! {
+                let output = run_command(
+                    Command::new("resim")
+                        .arg("call-function")
+                        .arg(package.address())
+                        .arg(blueprint.name())
+                        .arg(inst_name)
+                        .args(args),
+                    false,
+                );
+
+                lazy_static! {
                         static ref COMPONENT_RE: Regex = Regex::new(r#"Component: (\w*)"#).unwrap();
                     }
 
-                    let component_address = &COMPONENT_RE.captures(&output).expect(&format!(
-                        "Something went wrong when trying to instantiate blueprint! \n{}",
-                        output
-                    ))[1];
+                let component_address = &COMPONENT_RE.captures(&output).expect(&format!(
+                    "Something went wrong when trying to instantiate blueprint! \n{}",
+                    output
+                ))[1];
 
-                    let opt_badge: Option<String> = if blueprint.has_admin_badge() {
-                        lazy_static! {
+                let opt_badge: Option<String> = if blueprint.has_admin_badge() {
+                    lazy_static! {
                             static ref ADMIN_BADGE: Regex =
                                 Regex::new(r#"Resource: (\w*)"#).unwrap();
                         }
 
-                        let badge = &ADMIN_BADGE
-                            .captures(&output)
-                            .expect("Could not read admin badge address!")[1];
-                        Some(String::from(badge))
-                    } else {
-                        None
-                    };
+                    let badge = &ADMIN_BADGE
+                        .captures(&output)
+                        .expect("Could not read admin badge address!")[1];
+                    Some(String::from(badge))
+                } else {
+                    None
+                };
 
-                    let comp = Component::from(component_address, package.path(), opt_badge);
-                    self.components.insert(String::from(name), comp);
-                    write_transfer(package.path());
-                    self.resource_manager.update_resources();
-                    self.update_current_account();
-                }
-                None => {
-                    panic!(
-                        "Could not find a blueprint named {} for the package {}",
-                        blueprint_name, package_name
-                    );
-                }
-            },
-            None => {
-                panic!("Could not find a package named {}", name);
-            }
-        }
-    }
+                let comp = Component::from(component_address, package.path(), opt_badge);
+                self.components.insert(String::from(name), comp);
 
-    pub fn call_method<M>(&mut self, component: &str, method: M)
-    where
-        M: Method,
-    {
-        self.call_method_with_output(component, method);
-    }
-
-    pub fn call_method_with_output<M>(&mut self, component: &str, method: M) -> String
-    where
-        M: Method,
-    {
-        let output;
-        match self.components.get(component) {
-            None => {
-                panic!("No component with name {}", component)
-            }
-            Some(comp) => {
-                if !manifest_exists(method.name(), comp.package_path()) {
-                    Self::create_manifest(comp.package_path(), &method);
-                }
-                let component_address = String::from(comp.address());
-                let account_comp = String::from(self.get_current_account().address());
-
-                let mut env_binding = vec![];
-                env_binding.push((Manifest::caller_arg(), account_comp));
-                env_binding.push((Manifest::component_arg(), component_address));
-                if method.needs_admin_badge() {
-                    env_binding.push((
-                        Manifest::admin_badge_arg(),
-                        comp.admin_badge().as_ref().unwrap().clone(),
-                    ))
-                }
-
-                let mut arg_count = 0u32;
-                match method.args() {
-                    None => {}
-                    Some(args) => {
-                        for arg in args {
-                            match arg {
-                                Arg::Unit => {}
-                                Arg::FungibleBucketArg(name, amount) => {
-                                    let resource_arg_name = format!("arg_{}_resource", arg_count);
-                                    let amount_arg_name = format!("arg_{}_amount", arg_count);
-                                    env_binding
-                                        .push((resource_arg_name, self.get_token(&name).clone()));
-                                    env_binding.push((amount_arg_name, amount.to_string()));
-                                }
-                                Arg::NonFungibleBucketArg(name, ids) => {
-                                    let resource_arg_name = format!("arg_{}_resource", arg_count);
-                                    env_binding
-                                        .push((resource_arg_name, self.get_token(&name).clone()));
-
-                                    let ids_arg_name = format!("arg_{}_ids", arg_count);
-                                    let mut ids_arg_value = String::new();
-                                    for id_value in ids {
-                                        ids_arg_value = format!(
-                                            "{}NonFungibleId({}) ,",
-                                            ids_arg_value, id_value
-                                        );
-                                    }
-                                    ids_arg_value.pop();
-                                    ids_arg_value.pop();
-                                    env_binding.push((ids_arg_name, ids_arg_value));
-                                }
-                                Arg::FungibleProofArg(name, amount) => {
-                                    let resource_arg_name = format!("arg_{}_resource", arg_count);
-                                    let amount_arg_name = format!("arg_{}_amount", arg_count);
-                                    env_binding
-                                        .push((resource_arg_name, self.get_token(&name).clone()));
-                                    env_binding.push((
-                                        amount_arg_name,
-                                        format!("Decimal(\"{}\")", amount),
-                                    ));
-                                }
-                                Arg::NonFungibleProofArg(name, ids) => {
-                                    let resource_arg_name = format!("arg_{}_resource", arg_count);
-                                    env_binding
-                                        .push((resource_arg_name, self.get_token(&name).clone()));
-
-                                    let ids_arg_name = format!("arg_{}_ids", arg_count);
-                                    let mut ids_arg_value = String::new();
-                                    for id_value in ids {
-                                        ids_arg_value = format!(
-                                            "{}NonFungibleId({}) ,",
-                                            ids_arg_value, id_value
-                                        );
-                                    }
-                                    ids_arg_value.pop();
-                                    ids_arg_value.pop();
-                                    env_binding.push((ids_arg_name, ids_arg_value));
-                                }
-                                _ => env_binding.push(self.get_binding_for(&arg, arg_count)),
-                            }
-                            arg_count += 1;
-                        }
-                    }
-                }
-
-                output = run_manifest(comp.package_path(), method.name(), env_binding);
+                if self.current_component.is_none() { self.set_current_component(name); }
 
                 self.resource_manager.update_resources();
                 self.update_current_account();
             }
+            None => {
+                panic!(
+                    "Could not find a blueprint named {} for current the package",
+                    blueprint_name
+                );
+            }
         }
+    }
+
+    pub fn call_method<M>(&mut self, method: M)
+    where
+        M: Method,
+    {
+        self.call_method_with_output(method);
+    }
+
+    pub fn call_method_with_output<M>(&mut self, method: M) -> String
+    where
+        M: Method,
+    {
+
+        let component_address = self.get_current_component().address().to_string();
+        let package_path = self.get_current_package().path();
+        let component_badge = self.get_current_component().admin_badge().clone();
+        let output = self.call(method, component_address, package_path, component_badge);
+
+        self.resource_manager.update_resources();
+        self.update_current_account();
 
         output
     }
 
     pub fn transfer_to(&mut self, account: &str, token: &str, amount: Decimal) {
-        let from = String::from(self.get_current_account().address());
-        match self.accounts.get_mut(account) {
+        match self.accounts.get(account) {
             None => {
                 panic!("Account {} does not exist", account)
             }
             Some(acc) => {
+                let account_address = acc.address().to_string();
                 let resource_address = self.resource_manager.get_address(token);
                 let owned = acc.amount_owned(resource_address);
                 if owned < amount {
@@ -299,23 +226,23 @@ impl TestEnvironment {
                         "Current account does not own enough token {} (owns {})",
                         token, owned
                     )
-                } else {
-                    transfer(
-                        &from,
-                        acc.address(),
-                        resource_address,
-                        amount.to_string().as_str(),
-                    );
-                    self.resource_manager.update_resources_for_account(acc);
+                } else
+                {
+                    let transfer = Deposit {
+                        amount,
+                        resource: resource_address.clone()
+                    };
+
+                    let package_path = self.get_current_package().path();
+                    self.call(transfer, account_address, package_path, None);
                     self.update_current_account();
                 }
             }
         }
+        self.resource_manager.update_resources_for_account(self.accounts.get_mut(account).unwrap());
     }
 
-    pub fn reset() {
-        run_command(Command::new("resim").arg("reset"), false);
-    }
+
 
     fn update_current_account(&mut self) {
         let account = self.accounts.get_mut(&self.current_account).unwrap();
@@ -393,6 +320,54 @@ impl TestEnvironment {
     pub fn get_non_fungible_ids_for_current(&self, resource: &str) -> Option<&Vec<String>> {
         self.get_current_account()
             .get_non_fungibles_ids(self.resource_manager.get_address(resource))
+    }
+
+    pub fn get_current_package(&self) -> &Package
+    {
+        if self.current_package.is_none()
+        {
+            panic!("Please publish a package!");
+        }
+
+        let current = self.current_package.as_ref().unwrap();
+        self.packages.get(current).unwrap()
+    }
+
+    pub fn set_current_package(&mut self, package_name: &str)
+    {
+        let real_name = String::from(package_name).to_lowercase();
+        match self.packages.get(&real_name)
+        {
+            None => { panic!("There is no package with name {}", package_name) }
+            Some(_) =>
+                {
+                    self.current_package = Some(real_name);
+                }
+        }
+    }
+
+    pub fn get_current_component(&self) -> &Component
+    {
+        if self.current_component.is_none()
+        {
+            panic!("Please instantiate a component!");
+        }
+
+        let current = self.current_component.as_ref().unwrap();
+        self.components.get(current).unwrap()
+    }
+
+    pub fn set_current_component(&mut self, component_name: &str)
+    {
+        let real_name = String::from(component_name).to_lowercase();
+        match self.components.get(&real_name)
+        {
+            None => { panic!("There is no component with name {}", component_name) }
+            Some(_) =>
+                {
+                    self.current_component = Some(real_name);
+                }
+        }
     }
 
     fn create_manifest<M>(path: &str, method: &M)
@@ -526,4 +501,104 @@ impl TestEnvironment {
         string.pop();
         string
     }
+
+    fn reset() {
+        run_command(Command::new("resim").arg("reset"), false);
+    }
+
+    fn call<M>(&self, method: M, component_address: String, package_path: &str, component_badge: Option<String>) -> String
+        where
+            M: Method,
+    {
+
+        if !manifest_exists(method.name(), package_path) {
+            Self::create_manifest(package_path, &method);
+        }
+
+        let account_comp = String::from(self.get_current_account().address());
+
+        let mut env_binding = vec![];
+        env_binding.push((Manifest::caller_arg(), account_comp));
+        env_binding.push((Manifest::component_arg(), component_address));
+        match component_badge
+        {
+            None => {}
+            Some(badge) =>
+                {
+                    env_binding.push((
+                        Manifest::admin_badge_arg(),
+                        badge
+                    ));
+                }
+        }
+
+        let mut arg_count = 0u32;
+        match method.args()
+        {
+            None => {}
+            Some(args) => {
+                for arg in args {
+                    match arg {
+                        Arg::Unit => {}
+                        Arg::FungibleBucketArg(name, amount) => {
+                            let resource_arg_name = format!("arg_{}_resource", arg_count);
+                            let amount_arg_name = format!("arg_{}_amount", arg_count);
+                            env_binding
+                                .push((resource_arg_name, self.get_token(&name).clone()));
+                            env_binding.push((amount_arg_name, amount.to_string()));
+                        }
+                        Arg::NonFungibleBucketArg(name, ids) => {
+                            let resource_arg_name = format!("arg_{}_resource", arg_count);
+                            env_binding
+                                .push((resource_arg_name, self.get_token(&name).clone()));
+
+                            let ids_arg_name = format!("arg_{}_ids", arg_count);
+                            let mut ids_arg_value = String::new();
+                            for id_value in ids {
+                                ids_arg_value = format!(
+                                    "{}NonFungibleId({}) ,",
+                                    ids_arg_value, id_value
+                                );
+                            }
+                            ids_arg_value.pop();
+                            ids_arg_value.pop();
+                            env_binding.push((ids_arg_name, ids_arg_value));
+                        }
+                        Arg::FungibleProofArg(name, amount) => {
+                            let resource_arg_name = format!("arg_{}_resource", arg_count);
+                            let amount_arg_name = format!("arg_{}_amount", arg_count);
+                            env_binding
+                                .push((resource_arg_name, self.get_token(&name).clone()));
+                            env_binding.push((
+                                amount_arg_name,
+                                format!("Decimal(\"{}\")", amount),
+                            ));
+                        }
+                        Arg::NonFungibleProofArg(name, ids) => {
+                            let resource_arg_name = format!("arg_{}_resource", arg_count);
+                            env_binding
+                                .push((resource_arg_name, self.get_token(&name).clone()));
+
+                            let ids_arg_name = format!("arg_{}_ids", arg_count);
+                            let mut ids_arg_value = String::new();
+                            for id_value in ids {
+                                ids_arg_value = format!(
+                                    "{}NonFungibleId({}) ,",
+                                    ids_arg_value, id_value
+                                );
+                            }
+                            ids_arg_value.pop();
+                            ids_arg_value.pop();
+                            env_binding.push((ids_arg_name, ids_arg_value));
+                        }
+                        _ => env_binding.push(self.get_binding_for(&arg, arg_count)),
+                    }
+                    arg_count += 1;
+                }
+            }
+        }
+
+        run_manifest(package_path, method.name(), env_binding)
+    }
+
 }

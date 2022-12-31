@@ -7,7 +7,8 @@ The Scrypto Quick Rtm Testing package is a tool to easily test Scrypto packages 
 - [ ] Allow multiple possible instantiation
 - [ ] Deal with blueprints state 
 - [ ] Deal with returns and automatically check how things should have evolved
-- [ ] Automatic implementation of method trait 
+- [ ] Automatic implementation of method trait
+- [ ] Better doc
 
 # Known Bugs
 

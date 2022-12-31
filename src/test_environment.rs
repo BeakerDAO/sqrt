@@ -13,7 +13,7 @@ use regex::Regex;
 use scrypto::prelude::Decimal;
 use std::collections::HashMap;
 use std::process::Command;
-use crate::transfer::Transfer;
+use crate::transfer::Deposit;
 
 pub struct TestEnvironment {
     accounts: HashMap<String, Account>,
@@ -213,8 +213,7 @@ impl TestEnvironment {
     }
 
     pub fn transfer_to(&mut self, account: &str, token: &str, amount: Decimal) {
-
-        match self.accounts.get_mut(account) {
+        match self.accounts.get(account) {
             None => {
                 panic!("Account {} does not exist", account)
             }
@@ -229,21 +228,20 @@ impl TestEnvironment {
                     )
                 } else
                 {
-                    let transfer = Transfer{
-                        to: account_address.clone(),
+                    let transfer = Deposit {
                         amount,
                         resource: resource_address.clone()
                     };
 
                     let package_path = self.get_current_package().path();
                     self.call(transfer, account_address, package_path, None);
-                    self.resource_manager.update_resources_for_account(acc);
                     self.update_current_account();
                 }
             }
         }
-
+        self.resource_manager.update_resources_for_account(self.accounts.get_mut(account).unwrap());
     }
+
 
 
     fn update_current_account(&mut self) {

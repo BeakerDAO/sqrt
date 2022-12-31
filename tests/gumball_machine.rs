@@ -71,7 +71,7 @@ mod gumball_tests {
         let mut gumball_package = Package::new("tests/assets/gumball-machine/");
         gumball_package.add_blueprint("gumball", gumball_blueprint);
         test_env.publish_package("gumball", gumball_package);
-        test_env.new_component("gumball_comp", "gumball", "gumball", vec![]);
+        test_env.new_component("gumball_comp", "gumball", vec![]);
 
         test_env.get_token("gumball");
     }
@@ -83,9 +83,9 @@ mod gumball_tests {
         let mut gumball_package = Package::new("tests/assets/gumball-machine/");
         gumball_package.add_blueprint("gumball", gumball_blueprint);
         test_env.publish_package("gumball", gumball_package);
-        test_env.new_component("gumball_comp", "gumball", "gumball", vec![]);
+        test_env.new_component("gumball_comp", "gumball", vec![]);
 
-        test_env.call_method("gumball_comp", GumballMethods::GetPrice);
+        test_env.call_method(GumballMethods::GetPrice);
     }
 
     #[test]
@@ -95,8 +95,8 @@ mod gumball_tests {
         let mut gumball_package = Package::new("tests/assets/gumball-machine/");
         gumball_package.add_blueprint("gumball", gumball_blueprint);
         test_env.publish_package("gumball", gumball_package);
-        test_env.new_component("gumball_comp", "gumball", "gumball", vec![]);
-        test_env.call_method("gumball_comp", GumballMethods::BuyGumball(dec!(15)));
+        test_env.new_component("gumball_comp", "gumball", vec![]);
+        test_env.call_method(GumballMethods::BuyGumball(dec!(15)));
 
         assert_eq!(test_env.amount_owned_by_current("gumball"), Decimal::one());
     }

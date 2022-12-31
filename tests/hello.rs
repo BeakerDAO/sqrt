@@ -59,7 +59,7 @@ mod hello_tests {
         let mut hello_package = Package::new("tests/assets/hello-token/");
         hello_package.add_blueprint("hello", hello_blueprint);
         test_env.publish_package("hello", hello_package);
-        test_env.new_component("hello_comp", "hello", "hello", vec![]);
+        test_env.new_component("hello_comp", "hello", vec![]);
 
         // Check that tokens have been added to list
         test_env.get_token("HelloToken");
@@ -73,8 +73,8 @@ mod hello_tests {
         let mut hello_package = Package::new("tests/assets/hello-token/");
         hello_package.add_blueprint("hello", hello_blueprint);
         test_env.publish_package("hello", hello_package);
-        test_env.new_component("hello_comp", "hello", "hello", vec![]);
+        test_env.new_component("hello_comp", "hello", vec![]);
 
-        test_env.call_method("hello_comp", HelloMethods::FreeToken);
+        test_env.call_method(HelloMethods::FreeToken);
     }
 }

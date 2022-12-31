@@ -59,7 +59,7 @@ mod gumball_tests {
     fn test_publish() {
         let mut test_env = TestEnvironment::new();
         let gumball_blueprint = Box::new(GumballBp {});
-        let mut gumball_package = Package::new("tests/assets/gumball-machine/");
+        let mut gumball_package = Package::new("tests/gumball_machine/package");
         gumball_package.add_blueprint("gumball", gumball_blueprint);
         test_env.publish_package("gumball", gumball_package);
     }
@@ -68,7 +68,7 @@ mod gumball_tests {
     fn test_instantiate() {
         let mut test_env = TestEnvironment::new();
         let gumball_blueprint = Box::new(GumballBp {});
-        let mut gumball_package = Package::new("tests/assets/gumball-machine/");
+        let mut gumball_package = Package::new("tests/gumball_machine/package");
         gumball_package.add_blueprint("gumball", gumball_blueprint);
         test_env.publish_package("gumball", gumball_package);
         test_env.new_component("gumball_comp", "gumball", vec![]);
@@ -80,7 +80,7 @@ mod gumball_tests {
     fn test_get_price() {
         let mut test_env = TestEnvironment::new();
         let gumball_blueprint = Box::new(GumballBp {});
-        let mut gumball_package = Package::new("tests/assets/gumball-machine/");
+        let mut gumball_package = Package::new("tests/gumball_machine/package");
         gumball_package.add_blueprint("gumball", gumball_blueprint);
         test_env.publish_package("gumball", gumball_package);
         test_env.new_component("gumball_comp", "gumball", vec![]);
@@ -92,7 +92,7 @@ mod gumball_tests {
     fn test_buy_gumball() {
         let mut test_env = TestEnvironment::new();
         let gumball_blueprint = Box::new(GumballBp {});
-        let mut gumball_package = Package::new("tests/assets/gumball-machine/");
+        let mut gumball_package = Package::new("tests/gumball_machine/package");
         gumball_package.add_blueprint("gumball", gumball_blueprint);
         test_env.publish_package("gumball", gumball_package);
         test_env.new_component("gumball_comp", "gumball", vec![]);

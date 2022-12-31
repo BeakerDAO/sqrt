@@ -47,7 +47,7 @@ mod hello_tests {
     fn test_publish() {
         let mut test_env = TestEnvironment::new();
         let hello_blueprint = Box::new(HelloBp {});
-        let mut hello_package = Package::new("tests/assets/hello-token/");
+        let mut hello_package = Package::new("tests/hello_token/package/");
         hello_package.add_blueprint("hello", hello_blueprint);
         test_env.publish_package("hello", hello_package);
     }
@@ -56,7 +56,7 @@ mod hello_tests {
     fn test_instantiate() {
         let mut test_env = TestEnvironment::new();
         let hello_blueprint = Box::new(HelloBp {});
-        let mut hello_package = Package::new("tests/assets/hello-token/");
+        let mut hello_package = Package::new("tests/hello_token/package/");
         hello_package.add_blueprint("hello", hello_blueprint);
         test_env.publish_package("hello", hello_package);
         test_env.new_component("hello_comp", "hello", vec![]);
@@ -70,7 +70,7 @@ mod hello_tests {
     fn test_free_token() {
         let mut test_env = TestEnvironment::new();
         let hello_blueprint = Box::new(HelloBp {});
-        let mut hello_package = Package::new("tests/assets/hello-token/");
+        let mut hello_package = Package::new("tests/hello_token/package/");
         hello_package.add_blueprint("hello", hello_blueprint);
         test_env.publish_package("hello", hello_package);
         test_env.new_component("hello_comp", "hello", vec![]);

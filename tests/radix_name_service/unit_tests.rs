@@ -92,7 +92,7 @@ mod rns_tests {
     fn test_publish() {
         let mut test_env = TestEnvironment::new();
         let rns_blueprint = Box::new(RNSBp {});
-        let mut rns_package = Package::new("tests/assets/radix-name-service");
+        let mut rns_package = Package::new("tests/radix_name_service/package/");
         rns_package.add_blueprint("rns", rns_blueprint);
         test_env.publish_package("rns", rns_package);
     }
@@ -101,7 +101,7 @@ mod rns_tests {
     fn test_instantiate() {
         let mut test_env = TestEnvironment::new();
         let rns_blueprint = Box::new(RNSBp {});
-        let mut rns_package = Package::new("tests/assets/radix-name-service");
+        let mut rns_package = Package::new("tests/radix_name_service/package/");
         rns_package.add_blueprint("rns", rns_blueprint);
         test_env.publish_package("rns", rns_package);
         test_env.new_component("rns_comp", "rns", vec![]);
@@ -113,7 +113,7 @@ mod rns_tests {
     fn test_register_name() {
         let mut test_env = TestEnvironment::new();
         let rns_blueprint = Box::new(RNSBp {});
-        let mut rns_package = Package::new("tests/assets/radix-name-service");
+        let mut rns_package = Package::new("tests/radix_name_service/package/");
         rns_package.add_blueprint("rns", rns_blueprint);
         test_env.publish_package("rns", rns_package);
         test_env.new_component("rns_comp", "rns", vec![]);
@@ -134,7 +134,7 @@ mod rns_tests {
     fn test_unregister() {
         let mut test_env = TestEnvironment::new();
         let rns_blueprint = Box::new(RNSBp {});
-        let mut rns_package = Package::new("tests/assets/radix-name-service");
+        let mut rns_package = Package::new("tests/radix_name_service/package/");
         rns_package.add_blueprint("rns", rns_blueprint);
         test_env.publish_package("rns", rns_package);
         test_env.new_component("rns_comp", "rns", vec![]);
@@ -163,7 +163,7 @@ mod rns_tests {
     fn test_update_address() {
         let mut test_env = TestEnvironment::new();
         let rns_blueprint = Box::new(RNSBp {});
-        let mut rns_package = Package::new("tests/assets/radix-name-service");
+        let mut rns_package = Package::new("tests/radix_name_service/package/");
         rns_package.add_blueprint("rns", rns_blueprint);
         test_env.publish_package("rns", rns_package);
         test_env.new_component("rns_comp", "rns", vec![]);
@@ -194,7 +194,7 @@ mod rns_tests {
     fn test_withdraw_fees() {
         let mut test_env = TestEnvironment::new();
         let rns_blueprint = Box::new(RNSBp {});
-        let mut rns_package = Package::new("tests/assets/radix-name-service");
+        let mut rns_package = Package::new("tests/radix_name_service/package/");
         rns_package.add_blueprint("rns", rns_blueprint);
         test_env.publish_package("rns", rns_package);
         test_env.new_component("rns_comp", "rns", vec![]);
@@ -218,7 +218,7 @@ mod rns_tests {
     fn test_withdraw_fees_fail() {
         let mut test_env = TestEnvironment::new();
         let rns_blueprint = Box::new(RNSBp {});
-        let mut rns_package = Package::new("tests/assets/radix-name-service");
+        let mut rns_package = Package::new("tests/radix_name_service/package/");
         rns_package.add_blueprint("rns", rns_blueprint);
         test_env.publish_package("rns", rns_package);
         test_env.new_component("rns_comp", "rns", vec![]);

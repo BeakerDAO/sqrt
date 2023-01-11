@@ -14,15 +14,9 @@ mod rns_tests {
     struct RNSBp {}
 
     impl Blueprint for RNSBp {
-        fn instantiate(&self, _arg_values: Vec<String>) -> (&str, Vec<String>) {
+        fn instantiate(&self, arg_values: Vec<String>) -> (&str, Vec<String>) {
             let function_name = "instantiate_rns";
-            let args = vec![
-                String::from("1"),
-                String::from("0.01"),
-                String::from("0.01"),
-            ];
-
-            (function_name, args)
+            (function_name, arg_values)
         }
 
         fn name(&self) -> &str {
@@ -104,7 +98,12 @@ mod rns_tests {
         let mut rns_package = Package::new("tests/radix_name_service/package/");
         rns_package.add_blueprint("rns", rns_blueprint);
         test_env.publish_package("rns", rns_package);
-        test_env.new_component("rns_comp", "rns", vec![]);
+        let args = vec![
+                String::from("1"),
+                String::from("0.01"),
+                String::from("0.01"),
+            ];
+        test_env.new_component("rns_comp", "rns", args);
 
         test_env.get_resource("DomainName");
     }
@@ -116,7 +115,12 @@ mod rns_tests {
         let mut rns_package = Package::new("tests/radix_name_service/package/");
         rns_package.add_blueprint("rns", rns_blueprint);
         test_env.publish_package("rns", rns_package);
-        test_env.new_component("rns_comp", "rns", vec![]);
+        let args = vec![
+                String::from("1"),
+                String::from("0.01"),
+                String::from("0.01"),
+            ];
+        test_env.new_component("rns_comp", "rns", args);
 
         test_env.call_method(
             RNSMethods::RegisterName(
@@ -137,7 +141,12 @@ mod rns_tests {
         let mut rns_package = Package::new("tests/radix_name_service/package/");
         rns_package.add_blueprint("rns", rns_blueprint);
         test_env.publish_package("rns", rns_package);
-        test_env.new_component("rns_comp", "rns", vec![]);
+        let args = vec![
+                String::from("1"),
+                String::from("0.01"),
+                String::from("0.01"),
+            ];
+        test_env.new_component("rns_comp", "rns", args);
 
         test_env.call_method(
             RNSMethods::RegisterName(
@@ -166,7 +175,12 @@ mod rns_tests {
         let mut rns_package = Package::new("tests/radix_name_service/package/");
         rns_package.add_blueprint("rns", rns_blueprint);
         test_env.publish_package("rns", rns_package);
-        test_env.new_component("rns_comp", "rns", vec![]);
+        let args = vec![
+                String::from("1"),
+                String::from("0.01"),
+                String::from("0.01"),
+            ];
+        test_env.new_component("rns_comp", "rns", args);
 
         test_env.call_method(
             RNSMethods::RegisterName(
@@ -197,7 +211,12 @@ mod rns_tests {
         let mut rns_package = Package::new("tests/radix_name_service/package/");
         rns_package.add_blueprint("rns", rns_blueprint);
         test_env.publish_package("rns", rns_package);
-        test_env.new_component("rns_comp", "rns", vec![]);
+        let args = vec![
+                String::from("1"),
+                String::from("0.01"),
+                String::from("0.01"),
+            ];
+        test_env.new_component("rns_comp", "rns", args);
 
         test_env.call_method(
             RNSMethods::RegisterName(
@@ -221,7 +240,12 @@ mod rns_tests {
         let mut rns_package = Package::new("tests/radix_name_service/package/");
         rns_package.add_blueprint("rns", rns_blueprint);
         test_env.publish_package("rns", rns_package);
-        test_env.new_component("rns_comp", "rns", vec![]);
+        let args = vec![
+                String::from("1"),
+                String::from("0.01"),
+                String::from("0.01"),
+            ];
+        test_env.new_component("rns_comp", "rns", args);
 
         test_env.call_method(
             RNSMethods::RegisterName(
@@ -238,11 +262,5 @@ mod rns_tests {
         test_env.set_current_account("test");
 
         test_env.call_method(RNSMethods::WithdrawFees);
-    }
-
-    #[test]
-    fn test() {
-        let mut test_env = TestEnvironment::new();
-        test_env.create_fixed_supply_token("usd", dec!(1000));
     }
 }

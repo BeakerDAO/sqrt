@@ -2,10 +2,7 @@
 mod rns_tests {
     use scrypto::prelude::{dec, Decimal};
     use sqrt::blueprint::Blueprint;
-    use sqrt::method::Arg::{
-        AccountAddressArg, FungibleBucketArg, NonFungibleBucketArg, NonFungibleProofArg, StringArg,
-        U8,
-    };
+    use sqrt::method::Arg::{AccountAddressArg, DecimalArg, FungibleBucketArg, NonFungibleBucketArg, NonFungibleProofArg, StringArg, U8};
     use sqrt::method::{Arg, Method};
     use sqrt::method_args;
     use sqrt::package::Package;
@@ -14,10 +11,10 @@ mod rns_tests {
     struct RNSBp {}
 
     impl Blueprint for RNSBp {
-        fn instantiate(&self, arg_values: Vec<String>) -> (&str, Vec<String>) {
-            let function_name = "instantiate_rns";
-            (function_name, arg_values)
+        fn instantiation_name(&self) -> &str {
+            "instantiate_rns"
         }
+
 
         fn name(&self) -> &str {
             "RadixNameService"
@@ -99,9 +96,9 @@ mod rns_tests {
         rns_package.add_blueprint("rns", rns_blueprint);
         test_env.publish_package("rns", rns_package);
         let args = vec![
-                String::from("1"),
-                String::from("0.01"),
-                String::from("0.01"),
+                DecimalArg(dec!("1")),
+                DecimalArg(dec!("0.01")),
+                DecimalArg(dec!("0.01")),
             ];
         test_env.new_component("rns_comp", "rns", args);
 
@@ -116,9 +113,9 @@ mod rns_tests {
         rns_package.add_blueprint("rns", rns_blueprint);
         test_env.publish_package("rns", rns_package);
         let args = vec![
-                String::from("1"),
-                String::from("0.01"),
-                String::from("0.01"),
+                DecimalArg(dec!("1")),
+                DecimalArg(dec!("0.01")),
+                DecimalArg(dec!("0.01")),
             ];
         test_env.new_component("rns_comp", "rns", args);
 
@@ -142,9 +139,9 @@ mod rns_tests {
         rns_package.add_blueprint("rns", rns_blueprint);
         test_env.publish_package("rns", rns_package);
         let args = vec![
-                String::from("1"),
-                String::from("0.01"),
-                String::from("0.01"),
+                DecimalArg(dec!("1")),
+                DecimalArg(dec!("0.01")),
+                DecimalArg(dec!("0.01")),
             ];
         test_env.new_component("rns_comp", "rns", args);
 
@@ -176,9 +173,9 @@ mod rns_tests {
         rns_package.add_blueprint("rns", rns_blueprint);
         test_env.publish_package("rns", rns_package);
         let args = vec![
-                String::from("1"),
-                String::from("0.01"),
-                String::from("0.01"),
+                DecimalArg(dec!("1")),
+                DecimalArg(dec!("0.01")),
+                DecimalArg(dec!("0.01")),
             ];
         test_env.new_component("rns_comp", "rns", args);
 
@@ -212,9 +209,9 @@ mod rns_tests {
         rns_package.add_blueprint("rns", rns_blueprint);
         test_env.publish_package("rns", rns_package);
         let args = vec![
-                String::from("1"),
-                String::from("0.01"),
-                String::from("0.01"),
+                DecimalArg(dec!("1")),
+                DecimalArg(dec!("0.01")),
+                DecimalArg(dec!("0.01")),
             ];
         test_env.new_component("rns_comp", "rns", args);
 
@@ -241,9 +238,9 @@ mod rns_tests {
         rns_package.add_blueprint("rns", rns_blueprint);
         test_env.publish_package("rns", rns_package);
         let args = vec![
-                String::from("1"),
-                String::from("0.01"),
-                String::from("0.01"),
+                DecimalArg(dec!("1")),
+                DecimalArg(dec!("0.01")),
+                DecimalArg(dec!("0.01")),
             ];
         test_env.new_component("rns_comp", "rns", args);
 

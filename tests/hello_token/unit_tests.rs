@@ -12,12 +12,9 @@ mod hello_tests {
     struct HelloBp {}
 
     impl Blueprint for HelloBp {
-
-        fn instantiate(&self, _arg_values: Vec<String>) -> (&str, Vec<String>) {
-            // A new "Hello" blueprint is instantiated from the "instantiate_hello" method, which takes
-            // no arguments. Hence the return of this method.
-            let function_name = "instantiate_hello";
-            (function_name, vec![])
+        // A new "Hello" blueprint is instantiated from the "instantiate_hello" method
+        fn instantiation_name(&self) -> &str {
+            "instantiate_hello"
         }
 
         // The name of the blueprint is indeed "Hello"

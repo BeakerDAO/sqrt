@@ -2,16 +2,12 @@ use std::fmt::{Display, Formatter};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Instruction {
-    TakeFromWorktopByAmount {
-        amount_arg: String,
-        resource_address_arg: String,
-        bucket_id: u32,
-    },
 
-    TakeFromWorktopByIds {
-        ids_arg: String,
-        resource_address_arg: String,
-        bucket_id: u32,
+    CallFunction {
+        package_address_arg: String,
+        blueprint_name_arg: String,
+        function_name_arg: String,
+        args: Vec<String>
     },
 
     CallMethod {
@@ -33,38 +29,42 @@ pub enum Instruction {
     },
 
     DropAllProofs,
+
+    TakeFromWorktopByAmount {
+        amount_arg: String,
+        resource_address_arg: String,
+        bucket_id: u32,
+    },
+
+    TakeFromWorktopByIds {
+        ids_arg: String,
+        resource_address_arg: String,
+        bucket_id: u32,
+    },
 }
 
 impl Display for Instruction {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            Instruction::TakeFromWorktopByAmount {
-                amount_arg,
-                resource_address_arg,
-                bucket_id,
+            Instruction::CallFunction {
+                package_address_arg, blueprint_name_arg, function_name_arg, args
             } => {
+                let mut arg_str = String::new();
+                for arg in args {
+                    arg_str = format!(
+                        "{}\n\
+                         \t{}",
+                        arg_str, arg
+                    );
+                }
                 write!(
                     f,
-                    "TAKE_FROM_WORKTOP_BY_AMOUNT\n\
-                               \tDecimal(\"${{{}}}\")\n\
-                               \tResourceAddress(\"${{{}}}\")\n\
-                               \tBucket(\"{}\");",
-                    amount_arg, resource_address_arg, bucket_id
-                )
-            }
-
-            Instruction::TakeFromWorktopByIds {
-                resource_address_arg,
-                ids_arg,
-                bucket_id,
-            } => {
-                write!(
-                    f,
-                    "TAKE_FROM_WORKTOP_BY_IDS\n\
-                               \tArray<NonFungibleId>(${{{}}})\n\
-                               \tResourceAddress(\"${{{}}}\")\n\
-                               \tBucket(\"{}\");",
-                    ids_arg, resource_address_arg, bucket_id
+                    "CALL_FUNCTION\n\
+                               \tPackageAddress(\"${{{}}}\")\n\
+                               \t\"{}\"\n\
+                               \t\"{}\"\
+                               {};",
+                    package_address_arg, blueprint_name_arg, function_name_arg, arg_str
                 )
             }
 
@@ -122,6 +122,35 @@ impl Display for Instruction {
 
             Instruction::DropAllProofs => {
                 write!(f, "DROP_ALL_PROOFS;")
+            }
+            Instruction::TakeFromWorktopByAmount {
+                amount_arg,
+                resource_address_arg,
+                bucket_id,
+            } => {
+                write!(
+                    f,
+                    "TAKE_FROM_WORKTOP_BY_AMOUNT\n\
+                               \tDecimal(\"${{{}}}\")\n\
+                               \tResourceAddress(\"${{{}}}\")\n\
+                               \tBucket(\"{}\");",
+                    amount_arg, resource_address_arg, bucket_id
+                )
+            }
+
+            Instruction::TakeFromWorktopByIds {
+                resource_address_arg,
+                ids_arg,
+                bucket_id,
+            } => {
+                write!(
+                    f,
+                    "TAKE_FROM_WORKTOP_BY_IDS\n\
+                               \tArray<NonFungibleId>(${{{}}})\n\
+                               \tResourceAddress(\"${{{}}}\")\n\
+                               \tBucket(\"{}\");",
+                    ids_arg, resource_address_arg, bucket_id
+                )
             }
         }
     }

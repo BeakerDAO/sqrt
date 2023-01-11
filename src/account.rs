@@ -7,7 +7,6 @@ use std::process::Command;
 
 pub struct Account {
     address: String,
-    public_key: String,
     private_key: String,
     fungibles: HashMap<String, Decimal>,
     non_fungibles: HashMap<String, Vec<String>>,
@@ -22,23 +21,18 @@ impl Account {
     pub fn from(string_with_info: &str) -> Account {
         lazy_static! {
             static ref ADDRESS_RE: Regex = Regex::new(r"Account component address: (\w*)").unwrap();
-            static ref PUBLIC_KEY_RE: Regex = Regex::new(r"Public key: (\w*)").unwrap();
             static ref PRIVATE_KEY_RE: Regex = Regex::new(r"Private key: (\w*)").unwrap();
         }
 
         let address = &ADDRESS_RE
             .captures(string_with_info)
             .expect("Could not find address from given string")[1];
-        let public_key = &PUBLIC_KEY_RE
-            .captures(string_with_info)
-            .expect("Could not find public key from given string")[1];
         let private_key = &PRIVATE_KEY_RE
             .captures(string_with_info)
             .expect("Could not find private key from given string")[1];
 
         Account {
             address: String::from(address),
-            public_key: String::from(public_key),
             private_key: String::from(private_key),
             fungibles: HashMap::new(),
             non_fungibles: HashMap::new(),
@@ -47,10 +41,6 @@ impl Account {
 
     pub fn address(&self) -> &str {
         &self.address
-    }
-
-    pub fn public_key(&self) -> &str {
-        &self.public_key
     }
 
     pub fn private_key(&self) -> &str {

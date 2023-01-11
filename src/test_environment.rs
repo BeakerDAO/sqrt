@@ -14,6 +14,7 @@ use regex::Regex;
 use scrypto::prelude::Decimal;
 use std::collections::HashMap;
 use std::process::Command;
+use crate::blueprint::Blueprint;
 use crate::transfer::Deposit;
 
 ///
@@ -138,12 +139,12 @@ impl TestEnvironment {
     /// # Arguments
     /// * `name` - name associated to the component
     /// * `blueprint_name` - name of the blueprint
-    /// * `args_values` - value of the arguments needed to instantitate the Component
+    /// * `args_values` - value of the arguments needed to instantiate the Component
     pub fn new_component(
         &mut self,
         name: &str,
         blueprint_name: &str,
-        args_values: Vec<String>,
+        args: Vec<Arg>,
     ) {
         if self.current_package.is_none()
         {
@@ -160,17 +161,7 @@ impl TestEnvironment {
         {
             Some(box_blueprint) => {
                 let blueprint = box_blueprint.as_ref();
-                let (inst_name, args) = blueprint.instantiate(args_values);
-
-                let output = run_command(
-                    Command::new("resim")
-                        .arg("call-function")
-                        .arg(package.address())
-                        .arg(blueprint.name())
-                        .arg(inst_name)
-                        .args(args),
-                    false,
-                );
+                let output = self.instantiate(blueprint, package.path(), package.address(), &args);
 
                 lazy_static! {
                         static ref COMPONENT_RE: Regex = Regex::new(r#"Component: (\w*)"#).unwrap();
@@ -450,7 +441,18 @@ impl TestEnvironment {
         self.accounts.get(name)
     }
 
-    fn create_manifest<M>(path: &str, method: &M)
+    fn create_instantiation_manifest<B>(path: &str, blueprint: &B, args: &Vec<Arg>) -> String
+    where
+        B: Blueprint + ?Sized
+    {
+        let mut manifest = Manifest::new();
+        manifest.instantiate(blueprint, args);
+        let manifest_string = manifest.build();
+        let name = format!("{}_instantiation", blueprint.name());
+        write_manifest(manifest_string, path, name.as_str())
+    }
+
+    fn create_method_manifest<M>(path: &str, method: &M)
     where
         M: Method,
     {
@@ -582,6 +584,26 @@ impl TestEnvironment {
         string
     }
 
+    fn instantiate<B>(&self, blueprint: &B, package_path: &str, package_address: &str, args: &Vec<Arg>) -> String
+    where
+        B: Blueprint + ?Sized
+    {
+        let name = format!("{}_instantiation", blueprint.name());
+        if !manifest_exists(name.as_str(), package_path) {
+            Self::create_instantiation_manifest(package_path, blueprint, args);
+        }
+
+        let account_comp = String::from(self.get_current_account().address());
+
+        let mut env_binding = vec![];
+        env_binding.push((Manifest::caller_arg(), account_comp));
+        env_binding.push((Manifest::package_arg(), package_address.to_string()));
+
+        self.generate_bindings(args, &mut env_binding);
+        run_manifest(package_path, name.as_str(), env_binding)
+
+    }
+
     fn reset() {
         run_command(Command::new("resim").arg("reset"), false);
     }
@@ -592,7 +614,7 @@ impl TestEnvironment {
     {
 
         if !manifest_exists(method.name(), package_path) {
-            Self::create_manifest(package_path, &method);
+            Self::create_method_manifest(package_path, &method);
         }
 
         let account_comp = String::from(self.get_current_account().address());
@@ -611,74 +633,72 @@ impl TestEnvironment {
                     ));
                 }
         }
-
-        let mut arg_count = 0u32;
-        match method.args()
-        {
+        match method.args() {
             None => {}
-            Some(args) => {
-                for arg in args {
-                    match arg {
-                        Arg::Unit => {}
-                        Arg::FungibleBucketArg(name, amount) => {
-                            let resource_arg_name = format!("arg_{}_resource", arg_count);
-                            let amount_arg_name = format!("arg_{}_amount", arg_count);
-                            env_binding
-                                .push((resource_arg_name, self.get_resource(&name).clone()));
-                            env_binding.push((amount_arg_name, amount.to_string()));
-                        }
-                        Arg::NonFungibleBucketArg(name, ids) => {
-                            let resource_arg_name = format!("arg_{}_resource", arg_count);
-                            env_binding
-                                .push((resource_arg_name, self.get_resource(&name).clone()));
-
-                            let ids_arg_name = format!("arg_{}_ids", arg_count);
-                            let mut ids_arg_value = String::new();
-                            for id_value in ids {
-                                ids_arg_value = format!(
-                                    "{}NonFungibleId({}) ,",
-                                    ids_arg_value, id_value
-                                );
-                            }
-                            ids_arg_value.pop();
-                            ids_arg_value.pop();
-                            env_binding.push((ids_arg_name, ids_arg_value));
-                        }
-                        Arg::FungibleProofArg(name, amount) => {
-                            let resource_arg_name = format!("arg_{}_resource", arg_count);
-                            let amount_arg_name = format!("arg_{}_amount", arg_count);
-                            env_binding
-                                .push((resource_arg_name, self.get_resource(&name).clone()));
-                            env_binding.push((
-                                amount_arg_name,
-                                format!("Decimal(\"{}\")", amount),
-                            ));
-                        }
-                        Arg::NonFungibleProofArg(name, ids) => {
-                            let resource_arg_name = format!("arg_{}_resource", arg_count);
-                            env_binding
-                                .push((resource_arg_name, self.get_resource(&name).clone()));
-
-                            let ids_arg_name = format!("arg_{}_ids", arg_count);
-                            let mut ids_arg_value = String::new();
-                            for id_value in ids {
-                                ids_arg_value = format!(
-                                    "{}NonFungibleId({}) ,",
-                                    ids_arg_value, id_value
-                                );
-                            }
-                            ids_arg_value.pop();
-                            ids_arg_value.pop();
-                            env_binding.push((ids_arg_name, ids_arg_value));
-                        }
-                        _ => env_binding.push(self.get_binding_for(&arg, arg_count)),
-                    }
-                    arg_count += 1;
-                }
-            }
+            Some(args_vec) => { self.generate_bindings(&args_vec, &mut env_binding); }
         }
-
         run_manifest(package_path, method.name(), env_binding)
     }
 
+    fn generate_bindings(&self, args: &Vec<Arg>, env_binding: &mut Vec<(String,String)>) {
+        let mut arg_count = 0u32;
+        for arg in args {
+            match arg {
+                Arg::Unit => {}
+                Arg::FungibleBucketArg(name, amount) => {
+                    let resource_arg_name = format!("arg_{}_resource", arg_count);
+                    let amount_arg_name = format!("arg_{}_amount", arg_count);
+                    env_binding
+                        .push((resource_arg_name, self.get_resource(&name).clone()));
+                    env_binding.push((amount_arg_name, amount.to_string()));
+                }
+                Arg::NonFungibleBucketArg(name, ids) => {
+                    let resource_arg_name = format!("arg_{}_resource", arg_count);
+                    env_binding
+                        .push((resource_arg_name, self.get_resource(&name).clone()));
+
+                    let ids_arg_name = format!("arg_{}_ids", arg_count);
+                    let mut ids_arg_value = String::new();
+                    for id_value in ids {
+                        ids_arg_value = format!(
+                            "{}NonFungibleId({}) ,",
+                            ids_arg_value, id_value
+                        );
+                    }
+                    ids_arg_value.pop();
+                    ids_arg_value.pop();
+                    env_binding.push((ids_arg_name, ids_arg_value));
+                }
+                Arg::FungibleProofArg(name, amount) => {
+                    let resource_arg_name = format!("arg_{}_resource", arg_count);
+                    let amount_arg_name = format!("arg_{}_amount", arg_count);
+                    env_binding
+                        .push((resource_arg_name, self.get_resource(&name).clone()));
+                    env_binding.push((
+                        amount_arg_name,
+                        format!("Decimal(\"{}\")", amount),
+                    ));
+                }
+                Arg::NonFungibleProofArg(name, ids) => {
+                    let resource_arg_name = format!("arg_{}_resource", arg_count);
+                    env_binding
+                        .push((resource_arg_name, self.get_resource(&name).clone()));
+
+                    let ids_arg_name = format!("arg_{}_ids", arg_count);
+                    let mut ids_arg_value = String::new();
+                    for id_value in ids {
+                        ids_arg_value = format!(
+                            "{}NonFungibleId({}) ,",
+                            ids_arg_value, id_value
+                        );
+                    }
+                    ids_arg_value.pop();
+                    ids_arg_value.pop();
+                    env_binding.push((ids_arg_name, ids_arg_value));
+                }
+                _ => env_binding.push(self.get_binding_for(&arg, arg_count)),
+            }
+            arg_count += 1;
+        }
+    }
 }

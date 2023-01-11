@@ -9,7 +9,7 @@ sqrt = { git = "https://github.com/PointSquare/sqrt" }
 ```
 
 To use the library, you have to tell it in your test files how to instantiate your component and call your methods.
-We explain in the following subsections how to use the library
+We explain in the following subsections how to do so
 
 ## Test Environments
 
@@ -23,9 +23,9 @@ The first trait to implement is the Blueprint trait. It tells SQRT how to instan
 
 ```Rust
 pub trait Blueprint {
-    // Returns the name of the function to instantiate the blueprint as first argument
-    // and a vector of arguments value to call with
-    fn instantiate(&self, arg_values: Vec<String>) -> (&str, Vec<String>);
+    /// Returns the name of the function to instantiate the blueprint
+    fn instantiation_name(&self) -> &str;
+
 
     // Returns the name of the blueprint
     fn name(&self) -> &str;
@@ -72,13 +72,14 @@ pub enum TestMethods {
 
 impl Method for TestMethods { /* Trait implementation */ }
 ```
-The args function returns a `Vec<Arg>` and should have the same size as the number of arguments of the method to call.  
-The `Arg` enum has the following variants:
+
+## Arguments
+The way SQRT deals with methods and functions argument is by the `Arg` enum. The `Arg` enum has the following variants:
 
 | Variant                                     | Scrypto Type                                    | Arguments                                                                                                                            | Example                                                                                                                                              |
 |---------------------------------------------|-------------------------------------------------|--------------------------------------------------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------|
 | `Unit`                                      | `()`                                            | N/A                                                                                                                                  | `Arg::Unit`                                                                                                                                          |
-| `Bool(bool)`                                | `bool`                                          | `bool`: a boolean                                                                                                                    | `Arg::Bool`                                                                                                                                          |
+| `Bool(bool)`                                | `bool`                                          | `bool`: a boolean                                                                                                                    | `Arg::Bool(true)`                                                                                                                                    |
 | `I8(i8)`                                    | `i8`                                            | `i8`: an 8-bit integer                                                                                                               | `Arg::I8(-3)`                                                                                                                                        |
 | `I16(i16)`                                  | `i16`                                           | `i16`: a 16-bit integer                                                                                                              | `Arg::I16(-3)`                                                                                                                                       |
 | `I32(i32)`                                  | `i32`                                           | `i32`: a 32-bit integer                                                                                                              | `Arg::I32(-3)`                                                                                                                                       |

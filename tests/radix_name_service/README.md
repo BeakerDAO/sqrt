@@ -22,10 +22,8 @@ Therefore, we make the following implementation for the trait:
 struct RNSBp {}
 
 impl Blueprint for RNSBp {
-    fn instantiate(&self, arg_values: Vec<String>) -> (&str, Vec<String>) {
-        // We return the name of the instantiation function and we pass the arguments
-        let function_name = "instantiate_rns";
-        (function_name, arg_values)
+    fn instantiation_name(&self) -> &str {
+        "instantiate_rns"
     }
 
     fn name(&self) -> &str {
@@ -60,11 +58,11 @@ fn test_instantiate() {
     
     // We can now instantiate a new component (which will be referenced as "rns_comp")
     // We first create a vector with the desired arguments for the instantiation of the blueprint. Here, the arguments 
-    // are "deposit_per_year", "fee_address_update" and "fee_renewal_per_year".
+    // are "deposit_per_year", "fee_address_update" and "fee_renewal_per_year" in Decimal.
     let args = vec![
-        String::from("1"),
-        String::from("0.01"),
-        String::from("0.01"),
+        DecimalArg(dec!("1")),
+        DecimalArg(dec!("0.01")),
+        DecimalArg(dec!("0.01")),
     ];
     test_env.new_component("rns_comp", "rns", args);
 
@@ -230,9 +228,9 @@ fn test_register_name() {
     rns_package.add_blueprint("rns", rns_blueprint);
     test_env.publish_package("rns", rns_package);
     let args = vec![
-            String::from("1"),
-            String::from("0.01"),
-            String::from("0.01"),
+            DecimalArg(dec!("1")),
+            DecimalArg(dec!("0.01")),
+            DecimalArg(dec!("0.01")),
         ];
     test_env.new_component("rns_comp", "rns", args);
 
@@ -266,9 +264,9 @@ fn test_unregister() {
     rns_package.add_blueprint("rns", rns_blueprint);
     test_env.publish_package("rns", rns_package);
     let args = vec![
-            String::from("1"),
-            String::from("0.01"),
-            String::from("0.01"),
+            DecimalArg(dec!("1")),
+            DecimalArg(dec!("0.01")),
+            DecimalArg(dec!("0.01")),
         ];
     test_env.new_component("rns_comp", "rns", args);
 
@@ -312,9 +310,9 @@ fn test_update_address() {
     rns_package.add_blueprint("rns", rns_blueprint);
     test_env.publish_package("rns", rns_package);
     let args = vec![
-            String::from("1"),
-            String::from("0.01"),
-            String::from("0.01"),
+            DecimalArg(dec!("1")),
+            DecimalArg(dec!("0.01")),
+            DecimalArg(dec!("0.01")),
         ];
     test_env.new_component("rns_comp", "rns", args);
 
@@ -365,9 +363,9 @@ fn test_withdraw_fees() {
     rns_package.add_blueprint("rns", rns_blueprint);
     test_env.publish_package("rns", rns_package);
     let args = vec![
-            String::from("1"),
-            String::from("0.01"),
-            String::from("0.01"),
+            DecimalArg(dec!("1")),
+            DecimalArg(dec!("0.01")),
+            DecimalArg(dec!("0.01")),
         ];
     test_env.new_component("rns_comp", "rns", args);
 
@@ -400,9 +398,9 @@ fn test_withdraw_fees_fail() {
     rns_package.add_blueprint("rns", rns_blueprint);
     test_env.publish_package("rns", rns_package);
     let args = vec![
-            String::from("1"),
-            String::from("0.01"),
-            String::from("0.01"),
+            DecimalArg(dec!("1")),
+            DecimalArg(dec!("0.01")),
+            DecimalArg(dec!("0.01")),
         ];
     test_env.new_component("rns_comp", "rns", args);
 

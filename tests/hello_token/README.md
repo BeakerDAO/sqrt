@@ -20,11 +20,9 @@ struct HelloBp {}
 
 impl Blueprint for HelloBp {
 
-    fn instantiate(&self, _arg_values: Vec<String>) -> (&str, Vec<String>) {
-        // A new "Hello" blueprint is instantiated from the "instantiate_hello" method, which takes
-        // no arguments. Hence the return of this method.
-        let function_name = "instantiate_hello";
-        (function_name, vec![])
+    // A new "Hello" blueprint is instantiated from the "instantiate_hello" method
+    fn instantiation_name(&self) -> &str {
+        "instantiate_hello"
     }
 
     // The name of the blueprint is indeed "Hello"
@@ -57,7 +55,7 @@ fn test_instantiate() {
     // This package will be used as the default package
     test_env.publish_package("hello_pkg", hello_package);
     
-    // We can now instantiate a new component (which will be referenced as "hello_comp")
+    // We can now instantiate a new component (which will be referenced as "hello_comp") with no arguments 
     test_env.new_component("hello_comp", "hello", vec![]);
 
     // When instantiating a new Hello component, the blueprint creates two tokens named "HelloTokens" and "test"

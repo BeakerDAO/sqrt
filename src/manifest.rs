@@ -1,6 +1,7 @@
 use crate::instructions::Instruction;
 use crate::method::{Arg, Method};
 use scrypto::prelude::{dec, Decimal};
+use crate::blueprint::Blueprint;
 
 pub struct Manifest {
     needed_resources: Vec<Instruction>,
@@ -21,91 +22,39 @@ impl Manifest {
         }
     }
 
+    pub fn instantiate<B>(&mut self, blueprint: &B, args: &Vec<Arg>)
+    where
+        B: Blueprint + ?Sized,
+    {
+        self.lock_fee(Self::caller_arg(), dec!(100));
+        let args_vec = self.deal_with_args(args);
+
+        let inst = Instruction::CallFunction {
+            package_address_arg: Self::package_arg(),
+            blueprint_name_arg: blueprint.name().to_string(),
+            function_name_arg: blueprint.instantiation_name().to_string(),
+            args: args_vec
+        };
+
+        self.instructions.push(inst);
+        self.drop_proofs();
+        self.deposit_batch(Self::caller_arg());
+    }
+
+
     pub fn call_method<M>(&mut self, method: &M)
     where
         M: Method,
     {
-        let mut args_vec: Vec<String> = Vec::new();
-
         self.lock_fee(Self::caller_arg(), dec!(100));
         if method.needs_admin_badge() {
             self.create_admin_badge_proof(Self::caller_arg(), Self::admin_badge_arg());
         }
 
-        match method.args() {
-            None => {}
-            Some(args) => {
-                for arg in args {
-                    match arg {
-                        Arg::FungibleBucketArg(_, _) => {
-                            let amount_arg = format!("arg_{}_amount", self.arg_count);
-                            let resource_arg = format!("arg_{}_resource", self.arg_count);
-                            self.withdraw_by_amount(
-                                Self::caller_arg(),
-                                amount_arg.clone(),
-                                resource_arg.clone(),
-                            );
-                            self.take_from_worktop_by_amount(amount_arg, resource_arg, self.id);
-                            let ret = format!("Bucket(\"{}\")", self.id);
-                            self.id += 1;
-                            args_vec.push(ret);
-                        }
-                        Arg::NonFungibleBucketArg(_, _) => {
-                            let resource_arg = format!("arg_{}_resource", self.arg_count);
-                            let ids_arg = format!("arg_{}_ids", self.arg_count);
-                            self.withdraw_by_ids(
-                                Self::caller_arg(),
-                                resource_arg.clone(),
-                                ids_arg.clone(),
-                            );
-                            self.take_from_worktop_by_ids(resource_arg, ids_arg, self.id);
-                            let ret = format!("Bucket(\"{}\")", self.id);
-                            self.id += 1;
-                            args_vec.push(ret);
-                        }
-                        Arg::FungibleProofArg(_, _) => {
-                            let amount_arg = format!("arg_{}_amount", self.arg_count);
-                            let resource_arg = format!("arg_{}_resource", self.arg_count);
-                            self.create_usable_fungible_proof(
-                                Self::caller_arg(),
-                                resource_arg,
-                                amount_arg,
-                                self.id,
-                            );
-                            let ret = format!("Proof(\"{}\")", self.id);
-                            self.id += 1;
-                            self.has_proofs = true;
-                            args_vec.push(ret);
-                        }
-                        Arg::NonFungibleProofArg(_, _) => {
-                            let ids_arg = format!("arg_{}_ids", self.arg_count);
-                            let resource_arg = format!("arg_{}_resource", self.arg_count);
-                            self.create_usable_non_fungible_proof(
-                                Self::caller_arg(),
-                                resource_arg,
-                                ids_arg,
-                                self.id,
-                            );
-                            let ret = format!("Proof(\"{}\")", self.id);
-                            self.id += 1;
-                            self.has_proofs = true;
-                            args_vec.push(ret);
-                        }
-                        Arg::NonFungibleAddressArg(_, _) => {
-                            let resource_arg = format!("arg_{}_resource", self.arg_count);
-                            let id_arg = format!("arg_{}_id", self.arg_count);
-                            let ret =
-                                format!("{}(\"{}\", {})", arg.get_type(), resource_arg, id_arg);
-                            args_vec.push(ret);
-                        }
-                        _ => {
-                            args_vec.push(arg.to_generic(self.arg_count));
-                        }
-                    }
-                    self.arg_count += 1;
-                }
-            }
-        }
+        let args_vec = match method.args() {
+            None => { vec![] }
+            Some(args) => { self.deal_with_args(&args) }
+        };
 
         let inst = Instruction::CallMethod {
             component_address_arg: Self::component_arg(),
@@ -193,7 +142,7 @@ impl Manifest {
         self.needed_resources.push(inst);
     }
 
-    pub fn create_admin_badge_proof(&mut self, account_arg: String, resource_address_arg: String) {
+    fn create_admin_badge_proof(&mut self, account_arg: String, resource_address_arg: String) {
         let inst = Instruction::CallMethod {
             component_address_arg: account_arg,
             method_name: "create_proof".to_string(),
@@ -205,7 +154,7 @@ impl Manifest {
         self.needed_resources.push(inst);
     }
 
-    pub fn create_fungible_proof(
+    fn create_fungible_proof(
         &mut self,
         account_arg: String,
         resource_address_arg: String,
@@ -240,7 +189,7 @@ impl Manifest {
         self.needed_resources.push(inst);
     }
 
-    pub fn create_usable_fungible_proof(
+    fn create_usable_fungible_proof(
         &mut self,
         account_arg: String,
         resource_address_arg: String,
@@ -262,7 +211,7 @@ impl Manifest {
         self.needed_resources.push(inst);
     }
 
-    pub fn create_usable_non_fungible_proof(
+    fn create_usable_non_fungible_proof(
         &mut self,
         account_arg: String,
         resource_address_arg: String,
@@ -279,7 +228,7 @@ impl Manifest {
         self.needed_resources.push(inst);
     }
 
-    pub fn deposit_batch(&mut self, account_arg: String) {
+    fn deposit_batch(&mut self, account_arg: String) {
         let inst = Instruction::CallMethod {
             component_address_arg: account_arg,
             method_name: "deposit_batch".to_string(),
@@ -289,11 +238,88 @@ impl Manifest {
         self.instructions.push(inst);
     }
 
-    pub fn drop_proofs(&mut self) {
+    fn drop_proofs(&mut self) {
         if self.has_proofs {
             let inst = Instruction::DropAllProofs;
             self.instructions.push(inst);
         }
+    }
+
+    fn deal_with_args(&mut self, args: &Vec<Arg>) -> Vec<String>
+    {
+        let mut args_vec = vec![];
+
+        for arg in args {
+            match arg {
+                Arg::FungibleBucketArg(_, _) => {
+                    let amount_arg = format!("arg_{}_amount", self.arg_count);
+                    let resource_arg = format!("arg_{}_resource", self.arg_count);
+                    self.withdraw_by_amount(
+                        Self::caller_arg(),
+                        amount_arg.clone(),
+                        resource_arg.clone(),
+                    );
+                    self.take_from_worktop_by_amount(amount_arg, resource_arg, self.id);
+                    let ret = format!("Bucket(\"{}\")", self.id);
+                    self.id += 1;
+                    args_vec.push(ret);
+                }
+                Arg::NonFungibleBucketArg(_, _) => {
+                    let resource_arg = format!("arg_{}_resource", self.arg_count);
+                    let ids_arg = format!("arg_{}_ids", self.arg_count);
+                    self.withdraw_by_ids(
+                        Self::caller_arg(),
+                        resource_arg.clone(),
+                        ids_arg.clone(),
+                    );
+                    self.take_from_worktop_by_ids(resource_arg, ids_arg, self.id);
+                    let ret = format!("Bucket(\"{}\")", self.id);
+                    self.id += 1;
+                    args_vec.push(ret);
+                }
+                Arg::FungibleProofArg(_, _) => {
+                    let amount_arg = format!("arg_{}_amount", self.arg_count);
+                    let resource_arg = format!("arg_{}_resource", self.arg_count);
+                    self.create_usable_fungible_proof(
+                        Self::caller_arg(),
+                        resource_arg,
+                        amount_arg,
+                        self.id,
+                    );
+                    let ret = format!("Proof(\"{}\")", self.id);
+                    self.id += 1;
+                    self.has_proofs = true;
+                    args_vec.push(ret);
+                }
+                Arg::NonFungibleProofArg(_, _) => {
+                    let ids_arg = format!("arg_{}_ids", self.arg_count);
+                    let resource_arg = format!("arg_{}_resource", self.arg_count);
+                    self.create_usable_non_fungible_proof(
+                        Self::caller_arg(),
+                        resource_arg,
+                        ids_arg,
+                        self.id,
+                    );
+                    let ret = format!("Proof(\"{}\")", self.id);
+                    self.id += 1;
+                    self.has_proofs = true;
+                    args_vec.push(ret);
+                }
+                Arg::NonFungibleAddressArg(_, _) => {
+                    let resource_arg = format!("arg_{}_resource", self.arg_count);
+                    let id_arg = format!("arg_{}_id", self.arg_count);
+                    let ret =
+                        format!("{}(\"{}\", {})", arg.get_type(), resource_arg, id_arg);
+                    args_vec.push(ret);
+                }
+                _ => {
+                    args_vec.push(arg.to_generic(self.arg_count));
+                }
+            }
+            self.arg_count += 1;
+        }
+
+        args_vec
     }
 
     pub fn build(&self) -> String {
@@ -318,5 +344,9 @@ impl Manifest {
 
     pub fn admin_badge_arg() -> String {
         String::from("badge_address")
+    }
+
+    pub fn package_arg() -> String {
+        String::from("package_address")
     }
 }

@@ -19,11 +19,9 @@ Therefore, we make the following implementation for the trait:
 struct GumballBp {}
 
 impl Blueprint for GumballBp {
-    
-    fn instantiate(&self, arg_values: Vec<String>) -> (&str, Vec<String>) {
-        // We return the name of the instantiation function and we pass the arguments
-        let name = "instantiate_gumball_machine";
-        (name, arg_values)
+
+    fn instantiation_name(&self) -> &str {
+        "instantiate_gumball_machine"
     }
 
     fn name(&self) -> &str {
@@ -55,8 +53,8 @@ fn test_instantiate() {
     test_env.publish_package("gumball", gumball_package);
     
     // We can now instantiate a new component (which will be referenced as "gumball_comp")
-    // We give the argument String::from("1.5") because the component needs a price for the gumballs
-    test_env.new_component("gumball_comp", "gumball", vec![String::from("1.5")]);
+    // We give the argument DecimalArg(dec!("1.5")) because the component needs a Decimal price for the gumballs
+    test_env.new_component("gumball_comp", "gumball", vec![DecimalArg(dec!("1.5"))]);
 
     // When instantiating a new Gumball component, the blueprint creates a new token called "gumball"
     // We check that the new token has indeed been recognized by the TestEnvironment
@@ -146,7 +144,7 @@ fn test_get_price() {
     let mut gumball_package = Package::new("tests/gumball_machine/package");
     gumball_package.add_blueprint("gumball", gumball_blueprint);
     test_env.publish_package("gumball", gumball_package);
-    test_env.new_component("gumball_comp", "gumball", vec![String::from("1.5")]);
+    test_env.new_component("gumball_comp", "gumball", vec![DecimalArg(dec!("1.5"))]);
 
     // Call to the method
     test_env.call_method(GumballMethods::GetPrice);
@@ -167,7 +165,7 @@ fn test_buy_gumball() {
     let mut gumball_package = Package::new("tests/gumball_machine/package");
     gumball_package.add_blueprint("gumball", gumball_blueprint);
     test_env.publish_package("gumball", gumball_package);
-    test_env.new_component("gumball_comp", "gumball", vec![String::from("1.5")]);
+    test_env.new_component("gumball_comp", "gumball", vec![DecimalArg(dec!("1.5"))]);
 
     // We want to compare the amount of XRD owned before and after we buy a gumball
     let xrd_owned_before_call = test_env.amount_owned_by_current("radix");
@@ -197,7 +195,7 @@ fn test_buy_gumball_not_enough() {
     let mut gumball_package = Package::new("tests/gumball_machine/package");
     gumball_package.add_blueprint("gumball", gumball_blueprint);
     test_env.publish_package("gumball", gumball_package);
-    test_env.new_component("gumball_comp", "gumball", vec![String::from("1.5")]);
+    test_env.new_component("gumball_comp", "gumball", vec![DecimalArg(dec!("1.5"))]);
     
     // Here the command will panic because the method buy_gumball panics when the user does not send enough tokens
     test_env.call_method(GumballMethods::BuyGumball(dec!(1)));

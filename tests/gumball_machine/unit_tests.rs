@@ -3,6 +3,7 @@ mod gumball_tests {
     use scrypto::prelude::{dec, Decimal};
     use sqrt::blueprint::Blueprint;
     use sqrt::method::{Arg, Method};
+    use sqrt::method::Arg::DecimalArg;
     use sqrt::method_args;
     use sqrt::package::Package;
     use sqrt::test_environment::TestEnvironment;
@@ -10,10 +11,10 @@ mod gumball_tests {
     struct GumballBp {}
 
     impl Blueprint for GumballBp {
-        fn instantiate(&self, arg_values: Vec<String>) -> (&str, Vec<String>) {
-            let name = "instantiate_gumball_machine";
-            (name, arg_values)
+        fn instantiation_name(&self) -> &str {
+            "instantiate_gumball_machine"
         }
+
 
         fn name(&self) -> &str {
             "GumballMachine"
@@ -69,7 +70,7 @@ mod gumball_tests {
         let mut gumball_package = Package::new("tests/gumball_machine/package");
         gumball_package.add_blueprint("gumball", gumball_blueprint);
         test_env.publish_package("gumball", gumball_package);
-        test_env.new_component("gumball_comp", "gumball", vec![String::from("1.5")]);
+        test_env.new_component("gumball_comp", "gumball", vec![DecimalArg(dec!("1.5"))]);
 
         test_env.get_resource("gumball");
     }
@@ -81,7 +82,7 @@ mod gumball_tests {
         let mut gumball_package = Package::new("tests/gumball_machine/package");
         gumball_package.add_blueprint("gumball", gumball_blueprint);
         test_env.publish_package("gumball", gumball_package);
-        test_env.new_component("gumball_comp", "gumball", vec![String::from("1.5")]);
+        test_env.new_component("gumball_comp", "gumball", vec![DecimalArg(dec!("1.5"))]);
 
         test_env.call_method(GumballMethods::GetPrice);
     }
@@ -93,7 +94,7 @@ mod gumball_tests {
         let mut gumball_package = Package::new("tests/gumball_machine/package");
         gumball_package.add_blueprint("gumball", gumball_blueprint);
         test_env.publish_package("gumball", gumball_package);
-        test_env.new_component("gumball_comp", "gumball", vec![String::from("1.5")]);
+        test_env.new_component("gumball_comp", "gumball", vec![DecimalArg(dec!("1.5"))]);
 
         let xrd_owned_before_call = test_env.amount_owned_by_current("radix");
         test_env.call_method(GumballMethods::BuyGumball(dec!(15)));
@@ -111,7 +112,7 @@ mod gumball_tests {
         let mut gumball_package = Package::new("tests/gumball_machine/package");
         gumball_package.add_blueprint("gumball", gumball_blueprint);
         test_env.publish_package("gumball", gumball_package);
-        test_env.new_component("gumball_comp", "gumball", vec![String::from("1.5")]);
+        test_env.new_component("gumball_comp", "gumball", vec![DecimalArg(dec!("1.5"))]);
         test_env.call_method(GumballMethods::BuyGumball(dec!(1)));
     }
 }

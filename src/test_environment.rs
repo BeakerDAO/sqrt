@@ -248,8 +248,7 @@ impl TestEnvironment {
             }
             Some(acc) => {
                 let account_address = acc.address().to_string();
-                let resource_address = self.resource_manager.get_address(token);
-                let owned = acc.amount_owned(resource_address);
+                let owned = self.amount_owned_by_current(token);
                 if owned < amount {
                     panic!(
                         "Current account does not own enough token {} (owns {})",
@@ -259,7 +258,7 @@ impl TestEnvironment {
                 {
                     let transfer = Deposit {
                         amount,
-                        resource: resource_address.clone()
+                        resource: token.to_string()
                     };
 
                     let package_path = self.get_current_package().path();
@@ -303,6 +302,14 @@ impl TestEnvironment {
         );
 
         self.current_account = real_name;
+    }
+
+    pub fn get_current_account_address(&self) -> &str {
+        self.get_current_account().address()
+    }
+
+    pub fn get_account_address(&self, name: &str) -> &str {
+        self.get_account(name).unwrap().address()
     }
 
     /// Returns the address of a given Resource

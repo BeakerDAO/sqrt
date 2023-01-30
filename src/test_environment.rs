@@ -6,9 +6,7 @@ use crate::manifest::Manifest;
 use crate::method::{Arg, Method};
 use crate::package::Package;
 use crate::resource_manager::ResourceManager;
-use crate::utils::{
-    create_dir, manifest_exists, run_command, run_manifest, write_manifest,
-};
+use crate::utils::{create_dir, generated_manifest_exists, run_command, run_manifest, write_manifest};
 use lazy_static::lazy_static;
 use regex::Regex;
 use scrypto::prelude::Decimal;
@@ -235,6 +233,29 @@ impl TestEnvironment {
         output
     }
 
+    pub fn call_custom_manifest(&mut self, name: &str, env_args: Vec<(String, Arg)>)
+    {
+        self.call_custom_manifest_with_output(name, env_args);
+    }
+
+    pub fn call_custom_manifest_with_output(&mut self, name: &str, env_args: Vec<(String, Arg)>) -> String
+    {
+        let package_path = self.get_current_package().path();
+
+        let (args_name, args): (Vec<String>, Vec<Arg>) = env_args.into_iter().unzip();
+        let mut tmp_bindings = vec![];
+        self.generate_bindings(&args, &mut tmp_bindings);
+
+        let (_, args_value): (Vec<String>, Vec<String>) = tmp_bindings.into_iter().unzip();
+        let final_bindings: Vec<(String, String)> = args_name.into_iter().zip(args_value).collect();
+
+        let output = run_manifest(package_path, name, true, final_bindings);
+        self.resource_manager.update_resources();
+        self.update_current_account();
+
+        output
+    }
+
     /// Transfers a given amount of tokens from the current account to a given account
     ///
     /// # Arguments
@@ -308,6 +329,8 @@ impl TestEnvironment {
         self.get_current_account().address()
     }
 
+    pub fn get_current_account_name(&self) -> &str { &self.current_account }
+
     pub fn get_account_address(&self, name: &str) -> &str {
         self.get_account(name).unwrap().address()
     }
@@ -341,17 +364,6 @@ impl TestEnvironment {
     pub fn amount_owned_by_current(&self, resource_name: &str) -> Decimal {
         self.get_current_account()
             .amount_owned(self.get_resource(resource_name))
-    }
-
-    /// Returns the address of a given component
-    ///
-    /// # Arguments
-    /// * `component_name` -  name associated to the component
-    pub fn get_component(&self, component_name: &str) -> Option<&str> {
-        match self.components.get(component_name) {
-            None => None,
-            Some(comp) => Some(comp.address()),
-        }
     }
 
     /// Returns the ids owned by a given account for a given Non Fungible Resource
@@ -418,6 +430,11 @@ impl TestEnvironment {
         self.components.get(current).unwrap()
     }
 
+    pub fn get_current_component_name(&self) -> &str
+    {
+        self.current_component.as_ref().unwrap()
+    }
+
     /// Sets the current component to be used
     ///
     /// # Arguments
@@ -432,6 +449,17 @@ impl TestEnvironment {
                 {
                     self.current_component = Some(real_name);
                 }
+        }
+    }
+
+    /// Returns the address of a given component
+    ///
+    /// # Arguments
+    /// * `component_name` -  name associated to the component
+    pub fn get_component(&self, component_name: &str) -> Option<&str> {
+        match self.components.get(component_name) {
+            None => None,
+            Some(comp) => Some(comp.address()),
         }
     }
 
@@ -596,7 +624,7 @@ impl TestEnvironment {
         B: Blueprint + ?Sized
     {
         let name = format!("{}_instantiation", blueprint.name());
-        if !manifest_exists(name.as_str(), package_path) {
+        if !generated_manifest_exists(name.as_str(), package_path) {
             Self::create_instantiation_manifest(package_path, blueprint, args);
         }
 
@@ -607,7 +635,7 @@ impl TestEnvironment {
         env_binding.push((Manifest::package_arg(), package_address.to_string()));
 
         self.generate_bindings(args, &mut env_binding);
-        run_manifest(package_path, name.as_str(), env_binding)
+        run_manifest(package_path, name.as_str(),false, env_binding)
 
     }
 
@@ -620,7 +648,7 @@ impl TestEnvironment {
             M: Method,
     {
 
-        if !manifest_exists(method.name(), package_path) {
+        if !generated_manifest_exists(method.name(), package_path) {
             Self::create_method_manifest(package_path, &method);
         }
 
@@ -644,7 +672,7 @@ impl TestEnvironment {
             None => {}
             Some(args_vec) => { self.generate_bindings(&args_vec, &mut env_binding); }
         }
-        run_manifest(package_path, method.name(), env_binding)
+        run_manifest(package_path, method.name(), false, env_binding)
     }
 
     fn generate_bindings(&self, args: &Vec<Arg>, env_binding: &mut Vec<(String,String)>) {

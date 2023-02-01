@@ -11,19 +11,14 @@ pub fn run_command(command: &mut Command, is_transaction: bool) -> String {
     let stdout = String::from_utf8_lossy(&output.stdout).into_owned();
     let stderr = String::from_utf8_lossy(&output.stderr).into_owned();
 
-    lazy_static! {
-        static ref SUCCESS_RE: Regex = Regex::new("Transaction Status: COMMITTED SUCCESS").unwrap();
-    }
-
-    if !output.status.success() {
+    if !is_transaction && !output.status.success() {
         println!("stdout:\n{}", stdout);
         panic!("{}", stderr);
     }
-
-    if is_transaction && !SUCCESS_RE.is_match(&stdout) {
-        panic!("stdout:\n{}", stdout);
+    else
+    {
+        stdout
     }
-    stdout
 }
 
 pub fn write_manifest(output: String, path: &str, filename: &str) -> String {
@@ -65,19 +60,25 @@ pub fn create_dir(path: &str) {
         }
     }
     let custom_path = format!("{}{}", path_string, "rtm/custom");
-    let generated_path = format!("{}{}", path_string,"rtm/generated");
-    fs::create_dir_all(&custom_path).expect("Something went wrong when trying to create custom rtm folder path");
-    fs::create_dir_all(&generated_path).expect("Something went wrong when trying to create generated rtm folder path");
+    let generated_path = format!("{}{}", path_string, "rtm/generated");
+    fs::create_dir_all(&custom_path)
+        .expect("Something went wrong when trying to create custom rtm folder path");
+    fs::create_dir_all(&generated_path)
+        .expect("Something went wrong when trying to create generated rtm folder path");
 }
 
 pub fn run_manifest(
     package_path: &str,
     name: &str,
     custom_manifest: bool,
-    env_variables_binding: Vec<(String, String)>,
-) -> String {
+    env_variables_binding: Vec<(String, String)>
+) -> (String, String) {
     let current_dir = env::current_dir().expect("Could not find current directory");
-    let sub_folder = if custom_manifest { "custom" } else { "generated" };
+    let sub_folder = if custom_manifest {
+        "custom"
+    } else {
+        "generated"
+    };
     let path = format!(
         "{}/{}/rtm/{}/{}{}",
         current_dir.display(),
@@ -86,24 +87,31 @@ pub fn run_manifest(
         name,
         ".rtm"
     );
-    run_command(
+    let manifest_output = manifest_called(package_path, name, custom_manifest, &env_variables_binding);
+
+    let stdout = run_command(
         Command::new("resim")
             .arg("run")
             .arg(path)
             .envs(env_variables_binding),
         true,
-    )
+    );
+
+    (manifest_output, stdout)
 }
 
-pub fn manifest_called(
+fn manifest_called(
     package_path: &str,
     name: &str,
     custom_manifest: bool,
-    env_variables_binding: Vec<(String, String)>,
-) -> String
-{
+    env_variables_binding: &Vec<(String, String)>,
+) -> String {
     let current_dir = env::current_dir().expect("Could not find current directory");
-    let sub_folder = if custom_manifest { "custom" } else { "generated" };
+    let sub_folder = if custom_manifest {
+        "custom"
+    } else {
+        "generated"
+    };
     let path = format!(
         "{}/{}/rtm/{}/{}{}",
         current_dir.display(),
@@ -113,40 +121,13 @@ pub fn manifest_called(
         ".rtm"
     );
 
-    let mut manifest = fs::read_to_string(path)
-        .expect("Should have been able to read the file");
+    let mut manifest = fs::read_to_string(path).expect("Should have been able to read the file");
     for (arg_name, arg_value) in env_variables_binding {
         let gen_arg = format!("${{{}}}", arg_name);
         manifest = manifest.replace(gen_arg.as_str(), arg_value.as_str());
     }
 
     manifest
-}
-
-pub fn run_manifest_with_output(
-    package_path: &str,
-    name: &str,
-    custom_manifest: bool,
-    env_variables_binding: Vec<(String, String)>,
-) -> String {
-    let current_dir = env::current_dir().expect("Could not find current directory");
-    let sub_folder = if custom_manifest { "custom" } else { "generated" };
-    let path = format!(
-        "{}/{}/rtm/{}/{}{}",
-        current_dir.display(),
-        package_path,
-        sub_folder,
-        name,
-        ".rtm"
-    );
-    run_command(
-        Command::new("resim")
-            .arg("run")
-            .arg("--trace")
-            .arg(path)
-            .envs(env_variables_binding),
-        true,
-    )
 }
 
 pub fn generated_manifest_exists(method_name: &str, path: &str) -> bool {

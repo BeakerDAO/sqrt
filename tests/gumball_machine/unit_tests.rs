@@ -2,8 +2,9 @@
 mod gumball_tests {
     use scrypto::prelude::{dec, Decimal};
     use sqrt::blueprint::Blueprint;
-    use sqrt::method::{Arg, Method};
+    use sqrt::error::Error;
     use sqrt::method::Arg::DecimalArg;
+    use sqrt::method::{Arg, Method};
     use sqrt::method_args;
     use sqrt::package::Package;
     use sqrt::test_environment::TestEnvironment;
@@ -14,7 +15,6 @@ mod gumball_tests {
         fn instantiation_name(&self) -> &str {
             "instantiate_gumball_machine"
         }
-
 
         fn name(&self) -> &str {
             "GumballMachine"
@@ -84,7 +84,7 @@ mod gumball_tests {
         test_env.publish_package("gumball", gumball_package);
         test_env.new_component("gumball_comp", "gumball", vec![DecimalArg(dec!("1.5"))]);
 
-        test_env.call_method(GumballMethods::GetPrice);
+        test_env.call_method(GumballMethods::GetPrice).run();
     }
 
     #[test]
@@ -97,7 +97,7 @@ mod gumball_tests {
         test_env.new_component("gumball_comp", "gumball", vec![DecimalArg(dec!("1.5"))]);
 
         let xrd_owned_before_call = test_env.amount_owned_by_current("radix");
-        test_env.call_method(GumballMethods::BuyGumball(dec!(15)));
+        test_env.call_method(GumballMethods::BuyGumball(dec!(15))).run();
         let new_amount_xrd_amount = test_env.amount_owned_by_current("radix");
 
         assert_eq!(test_env.amount_owned_by_current("gumball"), Decimal::one());
@@ -105,7 +105,6 @@ mod gumball_tests {
     }
 
     #[test]
-    #[should_panic]
     fn test_buy_gumball_not_enough() {
         let mut test_env = TestEnvironment::new();
         let gumball_blueprint = Box::new(GumballBp {});
@@ -113,6 +112,7 @@ mod gumball_tests {
         gumball_package.add_blueprint("gumball", gumball_blueprint);
         test_env.publish_package("gumball", gumball_package);
         test_env.new_component("gumball_comp", "gumball", vec![DecimalArg(dec!("1.5"))]);
-        test_env.call_method(GumballMethods::BuyGumball(dec!(1)));
+        test_env.call_method(GumballMethods::BuyGumball(dec!(1)))
+            .should_panic(Error::Other("ApplicationError(BucketError(ResourceOperationError(InsufficientBalance)))".to_string()));
     }
 }

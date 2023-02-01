@@ -71,7 +71,6 @@ pub enum Arg {
 }
 
 impl Arg {
-
     /// Returns the type of an `Arg` according to Transaction Manifests
     pub fn get_type(&self) -> String {
         match self {

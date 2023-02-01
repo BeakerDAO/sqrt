@@ -11,7 +11,6 @@ pub struct Package {
 }
 
 impl Package {
-
     ///
     pub fn new(path: &str) -> Package {
         Package {

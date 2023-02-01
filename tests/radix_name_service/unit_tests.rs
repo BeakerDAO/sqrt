@@ -2,7 +2,11 @@
 mod rns_tests {
     use scrypto::prelude::{dec, Decimal};
     use sqrt::blueprint::Blueprint;
-    use sqrt::method::Arg::{AccountAddressArg, DecimalArg, FungibleBucketArg, NonFungibleBucketArg, NonFungibleProofArg, StringArg, U8};
+    use sqrt::error::Error;
+    use sqrt::method::Arg::{
+        AccountAddressArg, DecimalArg, FungibleBucketArg, NonFungibleBucketArg,
+        NonFungibleProofArg, StringArg, U8,
+    };
     use sqrt::method::{Arg, Method};
     use sqrt::method_args;
     use sqrt::package::Package;
@@ -14,7 +18,6 @@ mod rns_tests {
         fn instantiation_name(&self) -> &str {
             "instantiate_rns"
         }
-
 
         fn name(&self) -> &str {
             "RadixNameService"
@@ -96,10 +99,10 @@ mod rns_tests {
         rns_package.add_blueprint("rns", rns_blueprint);
         test_env.publish_package("rns", rns_package);
         let args = vec![
-                DecimalArg(dec!("1")),
-                DecimalArg(dec!("0.01")),
-                DecimalArg(dec!("0.01")),
-            ];
+            DecimalArg(dec!("1")),
+            DecimalArg(dec!("0.01")),
+            DecimalArg(dec!("0.01")),
+        ];
         test_env.new_component("rns_comp", "rns", args);
 
         test_env.get_resource("DomainName");
@@ -113,20 +116,18 @@ mod rns_tests {
         rns_package.add_blueprint("rns", rns_blueprint);
         test_env.publish_package("rns", rns_package);
         let args = vec![
-                DecimalArg(dec!("1")),
-                DecimalArg(dec!("0.01")),
-                DecimalArg(dec!("0.01")),
-            ];
+            DecimalArg(dec!("1")),
+            DecimalArg(dec!("0.01")),
+            DecimalArg(dec!("0.01")),
+        ];
         test_env.new_component("rns_comp", "rns", args);
 
-        test_env.call_method(
-            RNSMethods::RegisterName(
-                String::from("test.xrd"),
-                String::from("default"),
-                1,
-                dec!("15"),
-            ),
-        );
+        test_env.call_method(RNSMethods::RegisterName(
+            String::from("test.xrd"),
+            String::from("default"),
+            1,
+            dec!("15"),
+        )).run();
         let owned_nft = test_env.amount_owned_by_current("DomainName");
         assert_eq!(owned_nft, Decimal::one());
     }
@@ -139,20 +140,18 @@ mod rns_tests {
         rns_package.add_blueprint("rns", rns_blueprint);
         test_env.publish_package("rns", rns_package);
         let args = vec![
-                DecimalArg(dec!("1")),
-                DecimalArg(dec!("0.01")),
-                DecimalArg(dec!("0.01")),
-            ];
+            DecimalArg(dec!("1")),
+            DecimalArg(dec!("0.01")),
+            DecimalArg(dec!("0.01")),
+        ];
         test_env.new_component("rns_comp", "rns", args);
 
-        test_env.call_method(
-            RNSMethods::RegisterName(
-                String::from("test.xrd"),
-                String::from("default"),
-                1,
-                dec!("15"),
-            ),
-        );
+        test_env.call_method(RNSMethods::RegisterName(
+            String::from("test.xrd"),
+            String::from("default"),
+            1,
+            dec!("15"),
+        )).run();
         let owned_nft = test_env.amount_owned_by_current("DomainName");
         assert_eq!(owned_nft, Decimal::one());
 
@@ -160,7 +159,7 @@ mod rns_tests {
             .get_non_fungible_ids_owned_by_current("DomainName")
             .unwrap();
         let id = ids.get(0).unwrap();
-        test_env.call_method(RNSMethods::UnregisterName(id.clone()));
+        test_env.call_method(RNSMethods::UnregisterName(id.clone())).run();
         let owned_nft = test_env.amount_owned_by_current("DomainName");
         assert_eq!(owned_nft, Decimal::zero());
     }
@@ -173,20 +172,18 @@ mod rns_tests {
         rns_package.add_blueprint("rns", rns_blueprint);
         test_env.publish_package("rns", rns_package);
         let args = vec![
-                DecimalArg(dec!("1")),
-                DecimalArg(dec!("0.01")),
-                DecimalArg(dec!("0.01")),
-            ];
+            DecimalArg(dec!("1")),
+            DecimalArg(dec!("0.01")),
+            DecimalArg(dec!("0.01")),
+        ];
         test_env.new_component("rns_comp", "rns", args);
 
-        test_env.call_method(
-            RNSMethods::RegisterName(
-                String::from("test.xrd"),
-                String::from("default"),
-                1,
-                dec!("15"),
-            ),
-        );
+        test_env.call_method(RNSMethods::RegisterName(
+            String::from("test.xrd"),
+            String::from("default"),
+            1,
+            dec!("15"),
+        )).run();
         let owned_nft = test_env.amount_owned_by_current("DomainName");
         assert_eq!(owned_nft, Decimal::one());
 
@@ -196,9 +193,11 @@ mod rns_tests {
             .get_non_fungible_ids_owned_by_current("DomainName")
             .unwrap();
         let id = ids.get(0).unwrap();
-        test_env.call_method(
-            RNSMethods::UpdateAddress(String::from("test"), id.clone(), dec!(15)),
-        );
+        test_env.call_method(RNSMethods::UpdateAddress(
+            String::from("test"),
+            id.clone(),
+            dec!(15),
+        )).run();
     }
 
     #[test]
@@ -209,28 +208,25 @@ mod rns_tests {
         rns_package.add_blueprint("rns", rns_blueprint);
         test_env.publish_package("rns", rns_package);
         let args = vec![
-                DecimalArg(dec!("1")),
-                DecimalArg(dec!("0.01")),
-                DecimalArg(dec!("0.01")),
-            ];
+            DecimalArg(dec!("1")),
+            DecimalArg(dec!("0.01")),
+            DecimalArg(dec!("0.01")),
+        ];
         test_env.new_component("rns_comp", "rns", args);
 
-        test_env.call_method(
-            RNSMethods::RegisterName(
-                String::from("test.xrd"),
-                String::from("default"),
-                1,
-                dec!("15"),
-            ),
-        );
+        test_env.call_method(RNSMethods::RegisterName(
+            String::from("test.xrd"),
+            String::from("default"),
+            1,
+            dec!("15"),
+        )).run();
         let owned_nft = test_env.amount_owned_by_current("DomainName");
         assert_eq!(owned_nft, Decimal::one());
 
-        test_env.call_method(RNSMethods::WithdrawFees);
+        test_env.call_method(RNSMethods::WithdrawFees).run();
     }
 
     #[test]
-    #[should_panic]
     fn test_withdraw_fees_fail() {
         let mut test_env = TestEnvironment::new();
         let rns_blueprint = Box::new(RNSBp {});
@@ -238,26 +234,26 @@ mod rns_tests {
         rns_package.add_blueprint("rns", rns_blueprint);
         test_env.publish_package("rns", rns_package);
         let args = vec![
-                DecimalArg(dec!("1")),
-                DecimalArg(dec!("0.01")),
-                DecimalArg(dec!("0.01")),
-            ];
+            DecimalArg(dec!("1")),
+            DecimalArg(dec!("0.01")),
+            DecimalArg(dec!("0.01")),
+        ];
         test_env.new_component("rns_comp", "rns", args);
 
-        test_env.call_method(
-            RNSMethods::RegisterName(
-                String::from("test.xrd"),
-                String::from("default"),
-                1,
-                dec!("15"),
-            ),
-        );
+        test_env.call_method(RNSMethods::RegisterName(
+            String::from("test.xrd"),
+            String::from("default"),
+            1,
+            dec!("15"),
+        )).run();
         let owned_nft = test_env.amount_owned_by_current("DomainName");
         assert_eq!(owned_nft, Decimal::one());
 
         test_env.create_account("test");
         test_env.set_current_account("test");
 
-        test_env.call_method(RNSMethods::WithdrawFees);
+        test_env.call_method(RNSMethods::WithdrawFees)
+            .should_panic(Error::AssertFailed("No such resource in account".to_string()))
+            .run();
     }
 }

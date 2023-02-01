@@ -2,12 +2,11 @@ use std::fmt::{Display, Formatter};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Instruction {
-
     CallFunction {
         package_address_arg: String,
         blueprint_name_arg: String,
         function_name_arg: String,
-        args: Vec<String>
+        args: Vec<String>,
     },
 
     CallMethod {
@@ -47,7 +46,10 @@ impl Display for Instruction {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             Instruction::CallFunction {
-                package_address_arg, blueprint_name_arg, function_name_arg, args
+                package_address_arg,
+                blueprint_name_arg,
+                function_name_arg,
+                args,
             } => {
                 let mut arg_str = String::new();
                 for arg in args {

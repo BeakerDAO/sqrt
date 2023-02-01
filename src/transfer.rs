@@ -1,11 +1,11 @@
-use scrypto::math::Decimal;
-use crate::method::{Arg, Method};
 use crate::method::Arg::FungibleBucketArg;
+use crate::method::{Arg, Method};
 use crate::method_args;
+use scrypto::math::Decimal;
 
 pub struct Deposit {
     pub(crate) amount: Decimal,
-    pub(crate) resource: String
+    pub(crate) resource: String,
 }
 
 impl Method for Deposit {
@@ -14,9 +14,10 @@ impl Method for Deposit {
     }
 
     fn args(&self) -> Option<Vec<Arg>> {
-        method_args![
-            FungibleBucketArg(self.resource.clone(), self.amount.clone())
-        ]
+        method_args![FungibleBucketArg(
+            self.resource.clone(),
+            self.amount.clone()
+        )]
     }
 
     fn needs_admin_badge(&self) -> bool {

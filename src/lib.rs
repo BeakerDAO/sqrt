@@ -11,17 +11,18 @@
 //! - [ ] Deal with blueprints state
 //! - [ ] Deal with returns and automatically check how things should have evolved
 //! - [ ] Automatic implementation of method trait
-//! - [ ] Better doc
 
 extern crate core;
-pub mod blueprint;
-pub mod method;
-pub mod package;
-pub mod test_environment;
 mod account;
+pub mod blueprint;
 mod component;
 mod instructions;
 mod manifest;
+pub mod method;
+pub mod package;
 mod resource_manager;
-mod utils;
+pub mod test_environment;
 mod transfer;
+mod utils;
+pub mod error;
+mod manifest_call;

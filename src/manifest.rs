@@ -1,7 +1,7 @@
+use crate::blueprint::Blueprint;
 use crate::instructions::Instruction;
 use crate::method::{Arg, Method};
 use scrypto::prelude::{dec, Decimal};
-use crate::blueprint::Blueprint;
 
 pub struct Manifest {
     needed_resources: Vec<Instruction>,
@@ -33,14 +33,13 @@ impl Manifest {
             package_address_arg: Self::package_arg(),
             blueprint_name_arg: blueprint.name().to_string(),
             function_name_arg: blueprint.instantiation_name().to_string(),
-            args: args_vec
+            args: args_vec,
         };
 
         self.instructions.push(inst);
         self.drop_proofs();
         self.deposit_batch(Self::caller_arg());
     }
-
 
     pub fn call_method<M>(&mut self, method: &M)
     where
@@ -52,8 +51,10 @@ impl Manifest {
         }
 
         let args_vec = match method.args() {
-            None => { vec![] }
-            Some(args) => { self.deal_with_args(&args) }
+            None => {
+                vec![]
+            }
+            Some(args) => self.deal_with_args(&args),
         };
 
         let inst = Instruction::CallMethod {
@@ -245,8 +246,7 @@ impl Manifest {
         }
     }
 
-    fn deal_with_args(&mut self, args: &Vec<Arg>) -> Vec<String>
-    {
+    fn deal_with_args(&mut self, args: &Vec<Arg>) -> Vec<String> {
         let mut args_vec = vec![];
 
         for arg in args {
@@ -267,11 +267,7 @@ impl Manifest {
                 Arg::NonFungibleBucketArg(_, _) => {
                     let resource_arg = format!("arg_{}_resource", self.arg_count);
                     let ids_arg = format!("arg_{}_ids", self.arg_count);
-                    self.withdraw_by_ids(
-                        Self::caller_arg(),
-                        resource_arg.clone(),
-                        ids_arg.clone(),
-                    );
+                    self.withdraw_by_ids(Self::caller_arg(), resource_arg.clone(), ids_arg.clone());
                     self.take_from_worktop_by_ids(resource_arg, ids_arg, self.id);
                     let ret = format!("Bucket(\"{}\")", self.id);
                     self.id += 1;
@@ -308,8 +304,7 @@ impl Manifest {
                 Arg::NonFungibleAddressArg(_, _) => {
                     let resource_arg = format!("arg_{}_resource", self.arg_count);
                     let id_arg = format!("arg_{}_id", self.arg_count);
-                    let ret =
-                        format!("{}(\"{}\", {})", arg.get_type(), resource_arg, id_arg);
+                    let ret = format!("{}(\"{}\", {})", arg.get_type(), resource_arg, id_arg);
                     args_vec.push(ret);
                 }
                 _ => {

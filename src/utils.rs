@@ -14,9 +14,7 @@ pub fn run_command(command: &mut Command, is_transaction: bool) -> String {
     if !is_transaction && !output.status.success() {
         println!("stdout:\n{}", stdout);
         panic!("{}", stderr);
-    }
-    else
-    {
+    } else {
         stdout
     }
 }
@@ -71,7 +69,7 @@ pub fn run_manifest(
     package_path: &str,
     name: &str,
     custom_manifest: bool,
-    env_variables_binding: Vec<(String, String)>
+    env_variables_binding: Vec<(String, String)>,
 ) -> (String, String) {
     let current_dir = env::current_dir().expect("Could not find current directory");
     let sub_folder = if custom_manifest {
@@ -87,7 +85,8 @@ pub fn run_manifest(
         name,
         ".rtm"
     );
-    let manifest_output = manifest_called(package_path, name, custom_manifest, &env_variables_binding);
+    let manifest_output =
+        manifest_called(package_path, name, custom_manifest, &env_variables_binding);
 
     let stdout = run_command(
         Command::new("resim")

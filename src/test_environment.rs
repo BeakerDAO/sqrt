@@ -4,6 +4,7 @@ use crate::account::Account;
 use crate::blueprint::Blueprint;
 use crate::component::Component;
 use crate::manifest::Manifest;
+use crate::manifest_call::ManifestCall;
 use crate::method::{Arg, Method};
 use crate::package::Package;
 use crate::resource_manager::ResourceManager;
@@ -16,9 +17,7 @@ use regex::Regex;
 use scrypto::prelude::Decimal;
 use std::collections::HashMap;
 use std::process::Command;
-use crate::manifest_call::ManifestCall;
 
-///
 pub struct TestEnvironment {
     accounts: HashMap<String, Account>,
     packages: HashMap<String, Package>,
@@ -216,20 +215,26 @@ impl TestEnvironment {
     /// # Arguments
     /// * `name` -  name of the manifest to call
     /// * `env_args` - vector of (arg_name,value) to replace environment arguments with
-    pub fn call_custom_manifest(&mut self, name: &str, env_args: Vec<(String, Arg)>) -> ManifestCall {
-        let package_path = self.get_current_package().path().to_string();
+    pub fn call_custom_manifest(
+        &mut self,
+        name: &str,
+        env_args: Vec<(String, Arg)>,
+    ) -> ManifestCall {
         let (args_name, args): (Vec<String>, Vec<Arg>) = env_args.into_iter().unzip();
         let mut tmp_bindings = vec![];
         self.generate_bindings(&args, &mut tmp_bindings);
 
         let (_, args_value): (Vec<String>, Vec<String>) = tmp_bindings.into_iter().unzip();
-        let mut final_bindings: Vec<(String, String)> = args_name.into_iter().zip(args_value).collect();
+        let mut final_bindings: Vec<(String, String)> =
+            args_name.into_iter().zip(args_value).collect();
 
-        ManifestCall::new(self, package_path, name, true)
+        ManifestCall::new(self)
+            .call_manifest(name, true)
             .add_bindings(&mut final_bindings)
     }
 
-    pub fn update(&mut self){
+    /// Updates the resources and the current account
+    pub fn update(&mut self) {
         self.resource_manager.update_resources();
         self.update_current_account();
     }
@@ -259,7 +264,8 @@ impl TestEnvironment {
                         resource: token.to_string(),
                     };
                     let package_path = self.get_current_package().path().to_string();
-                    self.call(transfer, account_address, package_path, None).run();
+                    self.call(transfer, account_address, package_path, None)
+                        .run();
                 }
             }
         }
@@ -656,7 +662,8 @@ impl TestEnvironment {
             }
         }
 
-        ManifestCall::new(self, package_path, method.name(), false)
+        ManifestCall::new(self)
+            .call_manifest(method.name(), false)
             .add_bindings(&mut env_binding)
     }
 

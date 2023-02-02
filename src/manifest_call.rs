@@ -1,29 +1,38 @@
+//! Constructs a Manifest call
+
 use crate::error::Error;
 use crate::test_environment::TestEnvironment;
 use crate::utils::run_manifest;
 
-pub struct  ManifestCall<'a>{
+pub struct ManifestCall<'a> {
     test_environment: &'a mut TestEnvironment,
-    package_path: String,
-    call_name: String,
-    custom_manifest: bool,
-    env_bindings: Vec<(String,String)>,
+    manifest_name: Option<String>,
+    custom_manifest: Option<bool>,
+    env_bindings: Vec<(String, String)>,
     output_manifest: bool,
-    expected_error: Error
+    expected_error: Error,
 }
 
-impl <'a> ManifestCall<'a>{
-
-    pub fn new(test_environment: &'a mut TestEnvironment, package_path: String, call_name: &str, custom_manifest: bool) -> ManifestCall<'a> {
-        ManifestCall{
+impl<'a> ManifestCall<'a> {
+    /// Returns a new ManifestCall
+    ///
+    /// # Arguments
+    /// * `test_environment` - [`TestEnvironment`] of the call
+    pub fn new(test_environment: &'a mut TestEnvironment) -> ManifestCall<'a> {
+        ManifestCall {
             test_environment,
-            package_path,
-            call_name: call_name.to_string(),
-            custom_manifest,
+            manifest_name: None,
+            custom_manifest: None,
             env_bindings: vec![],
             output_manifest: false,
             expected_error: Error::Success,
         }
+    }
+
+    pub fn call_manifest(mut self, manifest_name: &str, custom_manifest: bool) -> ManifestCall<'a> {
+        self.manifest_name = Some(manifest_name.to_string());
+        self.custom_manifest = Some(custom_manifest);
+        self
     }
 
     pub fn add_bindings(mut self, new_bindings: &mut Vec<(String, String)>) -> ManifestCall<'a> {
@@ -46,17 +55,24 @@ impl <'a> ManifestCall<'a>{
         self
     }
 
-    pub fn run(self) -> Option<String>
-    {
-        let (manifest_output, stdout) = run_manifest(self.package_path.as_str(), self.call_name.as_str(), self.custom_manifest, self.env_bindings);
-        self.expected_error.has_been_triggered(stdout);
+    /// Runs a [`ManifestCall`] and returns a [`String`] if required
+    pub fn run(self) -> Option<String> {
+        if self.manifest_name.is_none() || self.custom_manifest.is_none() {
+            panic!("Cannot run a manifest without specifying what to call")
+        }
+
+        let (manifest_output, stdout) = run_manifest(
+            self.test_environment.get_current_package().path(),
+            self.manifest_name.unwrap().as_str(),
+            self.custom_manifest.unwrap(),
+            self.env_bindings,
+        );
+        self.expected_error.check_error(stdout);
         self.test_environment.update();
 
         if self.output_manifest {
             Some(manifest_output)
-        }
-        else
-        {
+        } else {
             None
         }
     }

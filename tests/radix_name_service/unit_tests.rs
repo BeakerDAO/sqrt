@@ -2,7 +2,7 @@
 mod rns_tests {
     use scrypto::prelude::{dec, Decimal};
     use sqrt::blueprint::Blueprint;
-    use sqrt::error::Error;
+    use sqrt::error::assert_fail;
     use sqrt::method::Arg::{
         AccountAddressArg, DecimalArg, FungibleBucketArg, NonFungibleBucketArg,
         NonFungibleProofArg, StringArg, U8,
@@ -122,12 +122,14 @@ mod rns_tests {
         ];
         test_env.new_component("rns_comp", "rns", args);
 
-        test_env.call_method(RNSMethods::RegisterName(
-            String::from("test.xrd"),
-            String::from("default"),
-            1,
-            dec!("15"),
-        )).run();
+        test_env
+            .call_method(RNSMethods::RegisterName(
+                String::from("test.xrd"),
+                String::from("default"),
+                1,
+                dec!("15"),
+            ))
+            .run();
         let owned_nft = test_env.amount_owned_by_current("DomainName");
         assert_eq!(owned_nft, Decimal::one());
     }
@@ -146,12 +148,14 @@ mod rns_tests {
         ];
         test_env.new_component("rns_comp", "rns", args);
 
-        test_env.call_method(RNSMethods::RegisterName(
-            String::from("test.xrd"),
-            String::from("default"),
-            1,
-            dec!("15"),
-        )).run();
+        test_env
+            .call_method(RNSMethods::RegisterName(
+                String::from("test.xrd"),
+                String::from("default"),
+                1,
+                dec!("15"),
+            ))
+            .run();
         let owned_nft = test_env.amount_owned_by_current("DomainName");
         assert_eq!(owned_nft, Decimal::one());
 
@@ -159,7 +163,9 @@ mod rns_tests {
             .get_non_fungible_ids_owned_by_current("DomainName")
             .unwrap();
         let id = ids.get(0).unwrap();
-        test_env.call_method(RNSMethods::UnregisterName(id.clone())).run();
+        test_env
+            .call_method(RNSMethods::UnregisterName(id.clone()))
+            .run();
         let owned_nft = test_env.amount_owned_by_current("DomainName");
         assert_eq!(owned_nft, Decimal::zero());
     }
@@ -178,12 +184,14 @@ mod rns_tests {
         ];
         test_env.new_component("rns_comp", "rns", args);
 
-        test_env.call_method(RNSMethods::RegisterName(
-            String::from("test.xrd"),
-            String::from("default"),
-            1,
-            dec!("15"),
-        )).run();
+        test_env
+            .call_method(RNSMethods::RegisterName(
+                String::from("test.xrd"),
+                String::from("default"),
+                1,
+                dec!("15"),
+            ))
+            .run();
         let owned_nft = test_env.amount_owned_by_current("DomainName");
         assert_eq!(owned_nft, Decimal::one());
 
@@ -193,11 +201,13 @@ mod rns_tests {
             .get_non_fungible_ids_owned_by_current("DomainName")
             .unwrap();
         let id = ids.get(0).unwrap();
-        test_env.call_method(RNSMethods::UpdateAddress(
-            String::from("test"),
-            id.clone(),
-            dec!(15),
-        )).run();
+        test_env
+            .call_method(RNSMethods::UpdateAddress(
+                String::from("test"),
+                id.clone(),
+                dec!(15),
+            ))
+            .run();
     }
 
     #[test]
@@ -214,12 +224,14 @@ mod rns_tests {
         ];
         test_env.new_component("rns_comp", "rns", args);
 
-        test_env.call_method(RNSMethods::RegisterName(
-            String::from("test.xrd"),
-            String::from("default"),
-            1,
-            dec!("15"),
-        )).run();
+        test_env
+            .call_method(RNSMethods::RegisterName(
+                String::from("test.xrd"),
+                String::from("default"),
+                1,
+                dec!("15"),
+            ))
+            .run();
         let owned_nft = test_env.amount_owned_by_current("DomainName");
         assert_eq!(owned_nft, Decimal::one());
 
@@ -240,20 +252,23 @@ mod rns_tests {
         ];
         test_env.new_component("rns_comp", "rns", args);
 
-        test_env.call_method(RNSMethods::RegisterName(
-            String::from("test.xrd"),
-            String::from("default"),
-            1,
-            dec!("15"),
-        )).run();
+        test_env
+            .call_method(RNSMethods::RegisterName(
+                String::from("test.xrd"),
+                String::from("default"),
+                1,
+                dec!("15"),
+            ))
+            .run();
         let owned_nft = test_env.amount_owned_by_current("DomainName");
         assert_eq!(owned_nft, Decimal::one());
 
         test_env.create_account("test");
         test_env.set_current_account("test");
 
-        test_env.call_method(RNSMethods::WithdrawFees)
-            .should_panic(Error::AssertFailed("No such resource in account".to_string()))
+        test_env
+            .call_method(RNSMethods::WithdrawFees)
+            .should_panic(assert_fail("No such resource in account"))
             .run();
     }
 }

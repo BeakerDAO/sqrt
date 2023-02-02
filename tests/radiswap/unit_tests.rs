@@ -121,12 +121,14 @@ mod radiswap_test {
         ];
         test_env.new_component("lp_comp", "radiswap_bp", args);
 
-        test_env.call_method(RadiSwapMethods::AddLiquidity(
-            "usd".to_string(),
-            dec!(1000),
-            "btc".to_string(),
-            dec!(100),
-        )).run();
+        test_env
+            .call_method(RadiSwapMethods::AddLiquidity(
+                "usd".to_string(),
+                dec!(1000),
+                "btc".to_string(),
+                dec!(100),
+            ))
+            .run();
 
         let lp_tokens_owned = test_env.amount_owned_by_current("usd-btc lp");
         let usd_owned = test_env.amount_owned_by_current("usd");
@@ -158,10 +160,12 @@ mod radiswap_test {
         ];
         test_env.new_component("lp_comp", "radiswap_bp", args);
 
-        test_env.call_method(RadiSwapMethods::RemoveLiquidity(
-            "usd-btc lp".to_string(),
-            dec!(1),
-        )).run();
+        test_env
+            .call_method(RadiSwapMethods::RemoveLiquidity(
+                "usd-btc lp".to_string(),
+                dec!(1),
+            ))
+            .run();
 
         let lp_tokens_owned = test_env.amount_owned_by_current("usd-btc lp");
         let usd_owned = test_env.amount_owned_by_current("usd");
@@ -193,7 +197,9 @@ mod radiswap_test {
         ];
         test_env.new_component("lp_comp", "radiswap_bp", args);
 
-        test_env.call_method(RadiSwapMethods::Swap("usd".to_string(), dec!(1000))).run();
+        test_env
+            .call_method(RadiSwapMethods::Swap("usd".to_string(), dec!(1000)))
+            .run();
 
         let usd_owned = test_env.amount_owned_by_current("usd");
         let btc_owned = test_env.amount_owned_by_current("btc");

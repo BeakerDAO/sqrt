@@ -244,7 +244,7 @@ fn test_register_name() {
             1,
             dec!("15"),
         ),
-    );
+    ).run();
     
     let owned_nft = test_env.amount_owned_by_current("DomainName");
     // We check that the account indeed received one DomainName NFR
@@ -277,7 +277,7 @@ fn test_unregister() {
             1,
             dec!("15"),
         ),
-    );
+    ).run();
     let owned_nft = test_env.amount_owned_by_current("DomainName");
     assert_eq!(owned_nft, Decimal::one());
 
@@ -290,7 +290,7 @@ fn test_unregister() {
     let id = ids.get(0).unwrap();
     
     // We can now call the method unregister_name via the UnregisterName variant with the right DomainName NFR id
-    test_env.call_method(RNSMethods::UnregisterName(id.clone()));
+    test_env.call_method(RNSMethods::UnregisterName(id.clone())).run();
     
     let owned_nft = test_env.amount_owned_by_current("DomainName");
     // We check that the current account does not have anymore DomainName NFR.
@@ -323,7 +323,7 @@ fn test_update_address() {
             1,
             dec!("15"),
         ),
-    );
+    ).run();
     let owned_nft = test_env.amount_owned_by_current("DomainName");
     assert_eq!(owned_nft, Decimal::one());
 
@@ -340,7 +340,7 @@ fn test_update_address() {
     // We can now call the method update_address via the UpdateAddress variant with the right DomainName NFR id
     test_env.call_method(
         RNSMethods::UpdateAddress(String::from("test"), id.clone(), dec!(15)),
-    );
+    ).run();
     
     // SQRT does not support getting the values of a NFR, so we cannot make assertions on new value of the NFR
 }
@@ -376,13 +376,13 @@ fn test_withdraw_fees() {
             1,
             dec!("15"),
         ),
-    );
+    ).run();
     
     let owned_nft = test_env.amount_owned_by_current("DomainName");
     assert_eq!(owned_nft, Decimal::one());
 
     // This call does not panic therefore it means that everything worked as expected
-    test_env.call_method(RNSMethods::WithdrawFees);
+    test_env.call_method(RNSMethods::WithdrawFees).run();
 }
 ```
 
@@ -390,7 +390,6 @@ fn test_withdraw_fees() {
 
 ```Rust
 #[test]
-#[should_panic]
 fn test_withdraw_fees_fail() {
     let mut test_env = TestEnvironment::new();
     let rns_blueprint = Box::new(RNSBp {});
@@ -411,7 +410,7 @@ fn test_withdraw_fees_fail() {
             1,
             dec!("15"),
         ),
-    );
+    ).run();
     let owned_nft = test_env.amount_owned_by_current("DomainName");
     assert_eq!(owned_nft, Decimal::one());
 
@@ -420,7 +419,9 @@ fn test_withdraw_fees_fail() {
     test_env.set_current_account("test");
 
     // As the current account "test" does not have an admin badge, this call will panic as expected
-    test_env.call_method(RNSMethods::WithdrawFees);
+    test_env.call_method(RNSMethods::WithdrawFees)
+        .should_panic(assert_fail("No such resource in account"))
+        .run();
 }
 ```
 

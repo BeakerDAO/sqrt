@@ -147,7 +147,7 @@ fn test_get_price() {
     test_env.new_component("gumball_comp", "gumball", vec![DecimalArg(dec!("1.5"))]);
 
     // Call to the method
-    test_env.call_method(GumballMethods::GetPrice);
+    test_env.call_method(GumballMethods::GetPrice).run();
 }
 ```
 
@@ -172,7 +172,7 @@ fn test_buy_gumball() {
 
     // We call the method buy_gumball via the variant BuyGumball with argument dec!(15)
     // With our implementation of the trait Method, it will call the method buy_gumball with a Bucket containing 15 XRD.
-    test_env.call_method(GumballMethods::BuyGumball(dec!(15)));
+    test_env.call_method(GumballMethods::BuyGumball(dec!(15))).run();
     
     let new_amount_xrd_amount = test_env.amount_owned_by_current("radix");
 
@@ -184,10 +184,11 @@ fn test_buy_gumball() {
 ```
 
 
-We would also want to test the case were the user sends a bucket with not enough XRD tokens:
+We would also want to test the case were the user sends a bucket with not enough XRD tokens. When this happens, the Engine
+returns the error `ApplicationError(BucketError(ResourceOperationError(InsufficientBalance)))`, we therefore tell the 
+ManifestCall that the test is suppose to fail with this error.
 ```Rust
 #[test]
-#[should_panic]
 fn test_buy_gumball_not_enough() {
     // Same initialisation as before
     let mut test_env = TestEnvironment::new();
@@ -198,7 +199,9 @@ fn test_buy_gumball_not_enough() {
     test_env.new_component("gumball_comp", "gumball", vec![DecimalArg(dec!("1.5"))]);
     
     // Here the command will panic because the method buy_gumball panics when the user does not send enough tokens
-    test_env.call_method(GumballMethods::BuyGumball(dec!(1)));
+    test_env.call_method(GumballMethods::BuyGumball(dec!(1)))
+        .should_panic(other_error("ApplicationError(BucketError(ResourceOperationError(InsufficientBalance)))"))
+        .run();
 }
 ```
 

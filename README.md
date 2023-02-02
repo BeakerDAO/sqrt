@@ -73,6 +73,65 @@ pub enum TestMethods {
 impl Method for TestMethods { /* Trait implementation */ }
 ```
 
+## ManifestCalls
+
+To call a custom or a generated Manifest, SQRT uses a ManifestCall. It gives the user the ability to give more details 
+about how to call the method/manifest. Calling a method is done in the following way:
+```Rust
+let mut test_env = TestEnvironment::new();
+test_env.call_method(TestMethods::FirstMethod(dec!(1))).run();
+```
+Calling a custom Manifest is bit more difficult, the user has to supply a list of environment argument and their value.
+It is done in the following way:
+```Rust
+let mut test_env = TestEnvironment::new();
+let mut env_args = vec![];
+env_args.push((
+    "caller_address".to_string(),
+    AccountAddressArg(test_env.get_current_account_name().to_string()),
+));
+env_args.push((
+    "component_address".to_string(),
+    ComponentAddressArg(test_env.get_current_component_name().to_string()),
+));
+test_env.call_custom_manifest("first_method", env_args).run();
+```
+If the user wants to get the actual manifest that is going to be run, they can add the instruction `output_manifest` to 
+the ManifestCall in the following way:
+```Rust
+let mut test_env = TestEnvironment::new();
+let output: String = test_env.call_method(TestMethods::FirstMethod(dec!(0)))
+    .output_manifest()
+    .run()
+```
+
+If a ManifestCall is supposed to fail, the user can add the `should_panic` instruction and supply the expected error to
+ManifestCall in the following way:
+```Rust
+let mut test_env = TestEnvironment::new();
+test_env.call_method(TestMethods::FirstMethod(dec!(0)))
+    .should_panic(assert_error("You should send a positive amount of tokens"))
+    .run();
+```
+
+### Error
+There are two types of errors:
+```Rust
+pub enum Error {
+    /// States that no error is expected
+    Success,
+    /// States that an assertion is expected to fail with a given message
+    AssertFailed(String),
+    /// States that another error should happen
+    Other(String)
+}
+```
+Errors should be constructed by the following functions:
+```Rust
+pub fn assert_fail(error_message: &str) -> Error {}
+pub fn other_error(error: &str) -> Error {}
+```
+
 ## Arguments
 The way SQRT deals with methods and functions argument is by the `Arg` enum. The `Arg` enum has the following variants:
 

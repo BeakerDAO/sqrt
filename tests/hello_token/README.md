@@ -126,7 +126,7 @@ fn test_free_token() {
     test_env.new_component("hello_comp", "hello", vec![]);
 
     // We call the method FreeToken
-    test_env.call_method(HelloMethods::FreeToken);
+    test_env.call_method(HelloMethods::FreeToken).run();
     // We check that we indeed received 1 HelloToken after having called the FreeToken function
     assert_eq!(test_env.amount_owned_by_current("HelloToken"), Decimal::ONE);
 }

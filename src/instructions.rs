@@ -115,7 +115,7 @@ impl Display for Instruction {
                 write!(
                     f,
                     "CREATE_PROOF_FROM_AUTH_ZONE_BY_IDS\n\
-                               \tArray<NonFungibleId>(${{{}}})\n\
+                               \tArray<NonFungibleLocalId>(${{{}}})\n\
                                \tResourceAddress(\"${{{}}}\")\n\
                                \tProof(\"{}\");",
                     ids_arg, resource_address_arg, proof_id
@@ -148,7 +148,7 @@ impl Display for Instruction {
                 write!(
                     f,
                     "TAKE_FROM_WORKTOP_BY_IDS\n\
-                               \tArray<NonFungibleId>(${{{}}})\n\
+                               \tArray<NonFungibleLocalId>(${{{}}})\n\
                                \tResourceAddress(\"${{{}}}\")\n\
                                \tBucket(\"{}\");",
                     ids_arg, resource_address_arg, bucket_id

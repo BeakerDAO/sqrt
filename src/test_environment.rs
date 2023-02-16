@@ -35,7 +35,7 @@ impl TestEnvironment {
 
         let mut default_account = Account::new();
         let mut resource_manager = ResourceManager::new();
-        resource_manager.generate_owner_badge(&mut default_account);
+        resource_manager.submit_owner_badge(&mut default_account, "default");
         let mut accounts = HashMap::new();
         accounts.insert(String::from("default"), default_account);
 
@@ -59,7 +59,10 @@ impl TestEnvironment {
         if self.accounts.contains_key(&real_name) {
             panic!("An account with this name already exists");
         } else {
-            self.accounts.insert(real_name.clone(), Account::new());
+            let mut new_account = Account::new();
+            self.resource_manager
+                .submit_owner_badge(&mut new_account, &real_name);
+            self.accounts.insert(real_name.clone(), new_account);
             self.accounts.get(&real_name).unwrap().address()
         }
     }
@@ -111,7 +114,7 @@ impl TestEnvironment {
                     .arg("publish")
                     .arg(package.path())
                     .arg("--owner-badge")
-                    .arg(self.resource_manager.get_owner_badge()),
+                    .arg(self.get_current_account().owner_badge()),
                 false,
             );
 
@@ -298,7 +301,8 @@ impl TestEnvironment {
             Command::new("resim")
                 .arg("set-default-account")
                 .arg(account.address())
-                .arg(account.private_key()),
+                .arg(account.private_key())
+                .arg(account.owner_badge()),
             false,
         );
 
@@ -568,7 +572,7 @@ impl TestEnvironment {
             Arg::ResourceAddressArg(name) => self.resource_manager.get_address(name).clone(),
             Arg::DecimalArg(value) => value.to_string(),
             Arg::PreciseDecimalArg(value) => value.to_string(),
-            Arg::NonFungibleIdArg(arg) => {
+            Arg::NonFungibleLocalId(arg) => {
                 let (_, value) = self.get_binding_for(arg.as_ref(), arg_count);
                 value
             }
@@ -578,7 +582,7 @@ impl TestEnvironment {
             | Arg::NonFungibleProofArg(_, _) => {
                 panic!("This should not happen")
             }
-            Arg::NonFungibleAddressArg(name, arg) => {
+            Arg::NonFungibleGlobalAddress(name, arg) => {
                 let (_, id_value) = self.get_binding_for(arg.as_ref(), 0);
                 let resource_value = self.resource_manager.get_address(name);
 
@@ -685,7 +689,8 @@ impl TestEnvironment {
                     let ids_arg_name = format!("arg_{}_ids", arg_count);
                     let mut ids_arg_value = String::new();
                     for id_value in ids {
-                        ids_arg_value = format!("{}NonFungibleId({}) ,", ids_arg_value, id_value);
+                        ids_arg_value =
+                            format!("{}NonFungibleLocalId(\"{}\") ,", ids_arg_value, id_value);
                     }
                     ids_arg_value.pop();
                     ids_arg_value.pop();
@@ -704,7 +709,8 @@ impl TestEnvironment {
                     let ids_arg_name = format!("arg_{}_ids", arg_count);
                     let mut ids_arg_value = String::new();
                     for id_value in ids {
-                        ids_arg_value = format!("{}NonFungibleId({}) ,", ids_arg_value, id_value);
+                        ids_arg_value =
+                            format!("{}NonFungibleLocalId(\"{}\") ,", ids_arg_value, id_value);
                     }
                     ids_arg_value.pop();
                     ids_arg_value.pop();

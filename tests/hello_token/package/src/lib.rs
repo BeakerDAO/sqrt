@@ -1,6 +1,7 @@
-use scrypto::prelude::*;
+use scrypto::blueprint;
 
-blueprint! {
+#[blueprint]
+mod hello_module {
     struct Hello {
         // Define what resources and data will be managed by Hello components
         sample_vault: Vault,
@@ -16,12 +17,12 @@ blueprint! {
             let my_bucket: Bucket = ResourceBuilder::new_fungible()
                 .metadata("name", "HelloToken")
                 .metadata("symbol", "HT")
-                .initial_supply(1000);
+                .mint_initial_supply(1000);
 
             let other_bucket: Bucket = ResourceBuilder::new_fungible()
                 .metadata("name", "TEST")
                 .metadata("symbol", "TST")
-                .initial_supply(9);
+                .mint_initial_supply(9);
 
             // Instantiate a Hello component, populating its vault with our supply of 1000 HelloToken
             Self {

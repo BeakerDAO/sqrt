@@ -145,7 +145,7 @@ pub fn generate_owner_badge() -> String {
     let output = run_command(Command::new("resim").arg("new-simple-badge"), false);
 
     lazy_static! {
-        static ref NFADDRESS_RE: Regex = Regex::new(r#"NFAddress: (.*)"#).unwrap();
+        static ref NFADDRESS_RE: Regex = Regex::new(r#"NonFungibleGlobalId: (.*)"#).unwrap();
     }
 
     let badge_address = &NFADDRESS_RE.captures(&output).expect("Unexpected error")[1];

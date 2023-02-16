@@ -34,7 +34,7 @@ impl Error {
                 }
             }
             AssertFailed(expected_error) => {
-                let assert_error_re: Regex = Regex::new(r#"Transaction Status: COMMITTED FAILURE: KernelError\(WasmError\(WasmError\("Trap\(Trap \{ kind: Unreachable \}\)"\)\)\)"#).unwrap();
+                let assert_error_re: Regex = Regex::new(r#"Transaction Status: COMMITTED FAILURE: KernelError\(WasmRuntimeError\(InterpreterError\("Trap\(Trap \{ kind: Unreachable \}\)"\)\)\)"#).unwrap();
                 let error = format!(r#"└─ \[ERROR\] Panicked at '{}'"#, expected_error);
                 let error_message_re: Regex = Regex::new(error.as_str()).unwrap();
 

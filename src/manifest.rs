@@ -135,7 +135,7 @@ impl Manifest {
             component_address_arg: account_arg,
             method_name: "withdraw_by_ids".to_string(),
             args: vec![
-                format!("Array<NonFungibleId>(${{{}}})", ids_arg),
+                format!("Array<NonFungibleLocalId>(${{{}}})", ids_arg),
                 format!("ResourceAddress(\"${{{}}}\")", resource_address_arg),
             ],
         };
@@ -183,7 +183,7 @@ impl Manifest {
             component_address_arg: account_arg,
             method_name: "create_proof_by_ids".to_string(),
             args: vec![
-                format!("Array<NonFungibleId>(${{{}}})", id_arg),
+                format!("Array<NonFungibleLocalId>(${{{}}})", id_arg),
                 resource_arg,
             ],
         };
@@ -301,7 +301,7 @@ impl Manifest {
                     self.has_proofs = true;
                     args_vec.push(ret);
                 }
-                Arg::NonFungibleAddressArg(_, _) => {
+                Arg::NonFungibleGlobalAddress(_, _) => {
                     let resource_arg = format!("arg_{}_resource", self.arg_count);
                     let id_arg = format!("arg_{}_id", self.arg_count);
                     let ret = format!("{}(\"{}\", {})", arg.get_type(), resource_arg, id_arg);
@@ -320,12 +320,14 @@ impl Manifest {
     pub fn build(&self) -> String {
         let mut output = String::new();
         for instr in &self.needed_resources {
-            output = format!("{}\n\n{}", output, instr);
+            output = format!("{}{}\n\n", output, instr);
         }
         for instr in &self.instructions {
-            output = format!("{}\n\n{}", output, instr);
+            output = format!("{}{}\n\n", output, instr);
         }
 
+        output.pop();
+        output.pop();
         output
     }
 

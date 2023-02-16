@@ -1,4 +1,4 @@
-use crate::utils::run_command;
+use crate::utils::{generate_owner_badge, run_command};
 use lazy_static::lazy_static;
 use regex::Regex;
 use scrypto::prelude::Decimal;
@@ -8,6 +8,7 @@ use std::process::Command;
 pub struct Account {
     address: String,
     private_key: String,
+    owner_badge: String,
     fungibles: HashMap<String, Decimal>,
     non_fungibles: HashMap<String, Vec<String>>,
 }
@@ -15,10 +16,11 @@ pub struct Account {
 impl Account {
     pub fn new() -> Account {
         let account_command = run_command(Command::new("resim").arg("new-account"), false);
-        Self::from(&account_command)
+        let badge = generate_owner_badge();
+        Self::from(&account_command, badge)
     }
 
-    pub fn from(string_with_info: &str) -> Account {
+    pub fn from(string_with_info: &str, badge_address: String) -> Account {
         lazy_static! {
             static ref ADDRESS_RE: Regex = Regex::new(r"Account component address: (\w*)").unwrap();
             static ref PRIVATE_KEY_RE: Regex = Regex::new(r"Private key: (\w*)").unwrap();
@@ -34,6 +36,7 @@ impl Account {
         Account {
             address: String::from(address),
             private_key: String::from(private_key),
+            owner_badge: badge_address,
             fungibles: HashMap::new(),
             non_fungibles: HashMap::new(),
         }
@@ -43,6 +46,9 @@ impl Account {
         &self.address
     }
 
+    pub fn owner_badge(&self) -> &str {
+        &self.owner_badge
+    }
     pub fn private_key(&self) -> &str {
         &self.private_key
     }

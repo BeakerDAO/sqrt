@@ -165,6 +165,7 @@ mod rns_tests {
         let id = ids.get(0).unwrap();
         test_env
             .call_method(RNSMethods::UnregisterName(id.clone()))
+            .output_manifest()
             .run();
         let owned_nft = test_env.amount_owned_by_current("DomainName");
         assert_eq!(owned_nft, Decimal::zero());
@@ -268,7 +269,7 @@ mod rns_tests {
 
         test_env
             .call_method(RNSMethods::WithdrawFees)
-            .should_panic(assert_fail("No such resource in account"))
+            .should_panic(assert_fail("à"))
             .run();
     }
 }

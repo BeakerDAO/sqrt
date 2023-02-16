@@ -59,7 +59,7 @@ pub enum Arg {
     NonFungibleProofArg(String, Vec<String>),
     Expression(String),
     Blob(String),
-    NonFungibleAddressArg(String, Box<Arg>),
+    NonFungibleGlobalAddress(String, Box<Arg>),
     HashArg(String),
     EcdsaSecp256k1PublicKeyArg(String),
     EcdsaSecp256k1Signature(String),
@@ -67,7 +67,7 @@ pub enum Arg {
     EddsaEd25519Signature(String),
     DecimalArg(Decimal),
     PreciseDecimalArg(PreciseDecimal),
-    NonFungibleIdArg(Box<Arg>),
+    NonFungibleLocalId(Box<Arg>),
 }
 
 impl Arg {
@@ -108,7 +108,7 @@ impl Arg {
             Arg::NonFungibleProofArg(_, _) => String::from("Proof"),
             Arg::Expression(_) => String::from("Expression"),
             Arg::Blob(_) => String::from("Blob"),
-            Arg::NonFungibleAddressArg(_, _) => String::from("NonFungibleAddress"),
+            Arg::NonFungibleGlobalAddress(_, _) => String::from("NonFungibleGlobalAddress"),
             Arg::HashArg(_) => String::from("Hash"),
             Arg::EcdsaSecp256k1PublicKeyArg(_) => String::from("EcdsaSecp256k1PublicKey"),
             Arg::EcdsaSecp256k1Signature(_) => String::from("EcdsaSecp256k1Signature"),
@@ -116,7 +116,7 @@ impl Arg {
             Arg::EddsaEd25519Signature(_) => String::from("EddsaEd25519Signature"),
             Arg::DecimalArg(_) => String::from("Decimal"),
             Arg::PreciseDecimalArg(_) => String::from("PreciseDecimal"),
-            Arg::NonFungibleIdArg(_) => String::from("NonFungibleId"),
+            Arg::NonFungibleLocalId(_) => String::from("NonFungibleLocalId"),
         }
     }
 
@@ -158,7 +158,7 @@ impl Arg {
             | Arg::SystemAddressArg(_)
             | Arg::Expression(_)
             | Arg::Blob(_)
-            | Arg::NonFungibleAddressArg(_, _)
+            | Arg::NonFungibleGlobalAddress(_, _)
             | Arg::HashArg(_)
             | Arg::EcdsaSecp256k1PublicKeyArg(_)
             | Arg::EcdsaSecp256k1Signature(_)
@@ -168,7 +168,7 @@ impl Arg {
             | Arg::PreciseDecimalArg(_) => {
                 format!("{}(\"{}\")", self.get_type(), generic)
             }
-            Arg::NonFungibleIdArg(arg) => {
+            Arg::NonFungibleLocalId(arg) => {
                 format!("{}({})", self.get_type(), arg.to_generic(arg_count))
             }
         }

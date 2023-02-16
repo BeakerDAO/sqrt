@@ -1,5 +1,5 @@
 use crate::account::Account;
-use crate::utils::{generate_owner_badge, run_command};
+use crate::utils::run_command;
 use lazy_static::lazy_static;
 use regex::{Captures, Regex};
 use scrypto::prelude::Decimal;
@@ -71,7 +71,7 @@ impl ResourceManager {
 
         lazy_static! {
             static ref NON_FUNGIBLE_RE: Regex =
-                Regex::new(r#"NonFungibleId\((.*)\), immutable_data"#).unwrap();
+                Regex::new(r#"NonFungibleLocalId\("(.*)"\), immutable_data"#).unwrap();
         }
 
         let mut non_fungible_vec: Vec<Captures> =
@@ -91,7 +91,8 @@ impl ResourceManager {
                 for _ in 0..amount_int {
                     let nf_resource = non_fungible_vec.remove(0);
                     let nf_id = &nf_resource[1];
-                    ids.push(String::from(nf_id));
+                    let true_nf_id = nf_id.to_string(); //replace("#", "").replace("[", "").replace("{","");
+                    ids.push(true_nf_id);
                 }
 
                 account.update_non_fungibles(&address, ids);
@@ -127,16 +128,12 @@ impl ResourceManager {
         }
     }
 
-    pub fn generate_owner_badge(&mut self, current_account: &mut Account) {
-        let resource_address = generate_owner_badge();
-        let mut splitter = resource_address.split(":");
+    pub fn submit_owner_badge(&mut self, current_account: &mut Account, account_name: &str) {
+        let mut splitter = current_account.owner_badge().split(":");
         let true_address = splitter.next().unwrap().to_string();
-        self.add_resource(&"owner_badge".to_string(), true_address, false);
+        let badge_name = format!("{} owner badge", account_name);
+        self.add_resource(&badge_name, true_address, false);
         self.update_resources_for_account(current_account);
-    }
-
-    pub fn get_owner_badge(&self) -> String {
-        format!("{}:U32#1", *self.get_address("owner_badge"))
     }
 
     fn recorded_name(name: &String) -> String {

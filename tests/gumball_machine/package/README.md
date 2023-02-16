@@ -26,20 +26,19 @@ Within the `instantiate_gumball_machine` function, the first thing we need to do
 
 ```rust
 let bucket_of_gumballs = ResourceBuilder::new_fungible()
-  .divisibility(DIVISIBILITY_MAXIMUM)
   .metadata("name", "Gumball")
   .metadata("symbol", "GUM")
   .metadata("description", "A delicious gumball")
-  .initial_supply(100);
+  .mint_initial_supply(100);
 ```
 
 All that's left is to populate our `GumballMachine` struct with our supply of gumballs, the user-specified price, and an empty Vault which we will force to contain XRD.  Then we'll instantiate it, which returns the address, and we'll return that to the caller.
 
 ```rust
 Self {
-  gumballs: Vault::with_bucket(bucket_of_gumballs),
-  collected_xrd: Vault::new(RADIX_TOKEN),
-  price: price
+    gumballs: Vault::with_bucket(bucket_of_gumballs),
+    collected_xrd: Vault::new(RADIX_TOKEN),
+    price: price,
 }
 .instantiate()
 .globalize()

@@ -29,7 +29,7 @@ impl ResourceManager {
             static ref RESOURCES_RE: Regex = Regex::new(r#"resource_(\w*)"#).unwrap();
         }
 
-        for resource in RESOURCES_RE.captures_iter(&output) {
+        for resource in RESOURCES_RE.captures_iter(&output.0) {
             let address = &resource[1];
             let mut final_address = format!("{}{}", "resource_", address);
             let output_show =
@@ -43,11 +43,11 @@ impl ResourceManager {
                 static ref FUNGIBLE_RE: Regex = Regex::new(r#"Resource Type: Fungible"#).unwrap();
             }
 
-            match &NAME_RE.captures(&output_show) {
+            match &NAME_RE.captures(&output_show.0) {
                 None => {}
                 Some(catch_name) => {
                     let name = String::from(&catch_name[1]);
-                    let is_fungible = FUNGIBLE_RE.is_match(&output_show);
+                    let is_fungible = FUNGIBLE_RE.is_match(&output_show.0);
                     if !is_fungible {
                         let mut splitter = final_address.split(":");
                         final_address = splitter.next().unwrap().to_string();
@@ -75,9 +75,9 @@ impl ResourceManager {
         }
 
         let mut non_fungible_vec: Vec<Captures> =
-            NON_FUNGIBLE_RE.captures_iter(&account_resources).collect();
+            NON_FUNGIBLE_RE.captures_iter(&account_resources.0).collect();
 
-        for resource in RESOURCE_RE.captures_iter(&account_resources) {
+        for resource in RESOURCE_RE.captures_iter(&account_resources.0) {
             let amount = Decimal::from(&resource[1]);
             let address = String::from(&resource[2]);
             if self.is_fungible(&address) {

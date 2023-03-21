@@ -6,7 +6,7 @@ use std::path::Path;
 use std::process::Command;
 use std::{env, fs};
 
-pub fn run_command(command: &mut Command, is_transaction: bool) -> String {
+pub fn run_command(command: &mut Command, is_transaction: bool) -> (String, String) {
     let output = command.output().expect("Failed to run command line");
     let stdout = String::from_utf8_lossy(&output.stdout).into_owned();
     let stderr = String::from_utf8_lossy(&output.stderr).into_owned();
@@ -15,7 +15,7 @@ pub fn run_command(command: &mut Command, is_transaction: bool) -> String {
         println!("stdout:\n{}", stdout);
         panic!("{}", stderr);
     } else {
-        stdout
+        (stdout, stderr)
     }
 }
 
@@ -70,7 +70,7 @@ pub fn run_manifest(
     name: &str,
     custom_manifest: bool,
     env_variables_binding: Vec<(String, String)>,
-) -> (String, String) {
+) -> (String, String, String) {
     let current_dir = env::current_dir().expect("Could not find current directory");
     let sub_folder = if custom_manifest {
         "custom"
@@ -88,7 +88,7 @@ pub fn run_manifest(
     let manifest_output =
         manifest_called(package_path, name, custom_manifest, &env_variables_binding);
 
-    let stdout = run_command(
+    let (stdout, stderr) = run_command(
         Command::new("resim")
             .arg("run")
             .arg(path)
@@ -96,7 +96,7 @@ pub fn run_manifest(
         true,
     );
 
-    (manifest_output, stdout)
+    (manifest_output, stdout, stderr)
 }
 
 fn manifest_called(
@@ -148,6 +148,6 @@ pub fn generate_owner_badge() -> String {
         static ref NFADDRESS_RE: Regex = Regex::new(r#"NonFungibleGlobalId: (.*)"#).unwrap();
     }
 
-    let badge_address = &NFADDRESS_RE.captures(&output).expect("Unexpected error")[1];
+    let badge_address = &NFADDRESS_RE.captures(&output.0).expect("Unexpected error")[1];
     String::from(badge_address)
 }

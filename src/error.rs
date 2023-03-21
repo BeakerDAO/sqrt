@@ -18,7 +18,14 @@ impl Error {
     ///
     /// # Arguments
     /// * `stdout` - String containing the stdout to check
-    pub fn check_error(&self, stdout: String) {
+    pub fn check_error(&self, stdout: String, stderr: String) {
+
+
+        if stdout == String::from("")
+        {
+            panic!("There was an error when trying to run manifest:\n{}", stderr);
+        }
+
         match self {
             Error::Success => {
                 lazy_static! {
@@ -35,7 +42,7 @@ impl Error {
             }
             AssertFailed(expected_error) => {
                 let assert_error_re: Regex = Regex::new(r#"Transaction Status: COMMITTED FAILURE: KernelError\(WasmRuntimeError\(InterpreterError\("Trap\(Trap \{ kind: Unreachable \}\)"\)\)\)"#).unwrap();
-                let error = format!(r#"└─ \[ERROR\] Panicked at '{}'"#, expected_error);
+                let error = format!(r#"└─ \[ERROR\] Panicked at '{}'"#, *expected_error);
                 let error_message_re: Regex = Regex::new(error.as_str()).unwrap();
 
                 if !assert_error_re.is_match(&stdout) {

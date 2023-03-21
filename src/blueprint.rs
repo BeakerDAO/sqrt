@@ -9,5 +9,12 @@ pub trait Blueprint {
     fn name(&self) -> &str;
 
     /// Returns whether the blueprints has an admin badge
-    fn has_admin_badge(&self) -> bool;
+    fn has_admin_badge(&self) -> AdminBadge;
+}
+
+
+pub enum AdminBadge{
+    Internal,
+    External(String),
+    None
 }

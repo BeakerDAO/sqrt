@@ -1,7 +1,7 @@
 //! Environment for a test
 
 use crate::account::Account;
-use crate::blueprint::Blueprint;
+use crate::blueprint::{AdminBadge, Blueprint};
 use crate::component::Component;
 use crate::manifest::Manifest;
 use crate::manifest_call::ManifestCall;
@@ -14,7 +14,7 @@ use crate::utils::{
 };
 use lazy_static::lazy_static;
 use regex::Regex;
-use scrypto::prelude::Decimal;
+use scrypto::prelude::{Decimal, Instant, UtcDateTime};
 use std::collections::HashMap;
 use std::process::Command;
 
@@ -88,12 +88,46 @@ impl TestEnvironment {
                 static ref ADDRESS_RE: Regex = Regex::new(r#"Resource: (\w*)"#).unwrap();
             }
 
-            let resource_address = String::from(&ADDRESS_RE.captures(&output).unwrap()[1]);
+            let resource_address = String::from(&ADDRESS_RE.captures(&output.0).unwrap()[1]);
 
             self.resource_manager
                 .add_resource(&name, resource_address, true);
             self.update_current_account();
         }
+    }
+
+
+    /// Creates a new token with mutable supply and with a given name
+    ///
+    /// # Arguments
+    /// * `name` - name associated to the token
+    /// * `minter_badge` - minter resource address
+    pub fn create_mintable_token(&mut self, name: &str, minter_badge: &str) {
+        let name = String::from(name);
+        if self.resource_manager.exists(&name) {
+            panic!("A token with same name already exists!")
+        } else {
+
+            let minter_badge = self.resource_manager.get_address(minter_badge);
+
+            let output = run_command(
+                Command::new("resim")
+                    .arg("new-token-mutable")
+                    .arg(minter_badge),
+                false,
+            );
+
+            lazy_static! {
+                static ref ADDRESS_RE: Regex = Regex::new(r#"Resource: (\w*)"#).unwrap();
+            }
+
+            let resource_address = String::from(&ADDRESS_RE.captures(&output.0).unwrap()[1]);
+
+            self.resource_manager
+                .add_resource(&name, resource_address, true);
+            self.update_current_account();
+        }
+
     }
 
     /// Publishes a new package to resim and the test environment
@@ -118,9 +152,9 @@ impl TestEnvironment {
                 false,
             );
 
-            let package_address = &PACKAGE_RE.captures(&package_output).expect(&format!(
+            let package_address = &PACKAGE_RE.captures(&package_output.0).expect(&format!(
                 "Something went wrong! Maybe the path was incorrect? \n{}",
-                package_output
+                package_output.0
             ))[1];
 
             package.set_address(String::from(package_address));
@@ -162,22 +196,30 @@ impl TestEnvironment {
                     static ref COMPONENT_RE: Regex = Regex::new(r#"Component: (\w*)"#).unwrap();
                 }
 
-                let component_address = &COMPONENT_RE.captures(&output).expect(&format!(
+                let component_address = &COMPONENT_RE.captures(&output.0).expect(&format!(
                     "Something went wrong when trying to instantiate blueprint! \n{}",
-                    output
+                    output.0
                 ))[1];
 
-                let opt_badge: Option<String> = if blueprint.has_admin_badge() {
-                    lazy_static! {
+                let opt_badge: Option<String> = match blueprint.has_admin_badge() {
+
+                    AdminBadge::Internal => {
+                        lazy_static! {
                         static ref ADMIN_BADGE: Regex = Regex::new(r#"Resource: (\w*)"#).unwrap();
                     }
 
-                    let badge = &ADMIN_BADGE
-                        .captures(&output)
-                        .expect("Could not read admin badge address!")[1];
-                    Some(String::from(badge))
-                } else {
-                    None
+                        let badge = &ADMIN_BADGE
+                            .captures(&output.0)
+                            .expect("Could not read admin badge address!")[1];
+                        Some(String::from(badge))
+                    }
+
+                    AdminBadge::External(admin_badge_address) => {
+                        Some(self.resource_manager.get_address(&admin_badge_address).clone())
+                    }
+
+                    AdminBadge::None => { None }
+
                 };
 
                 let comp = Component::from(component_address, package.path(), opt_badge);
@@ -285,6 +327,13 @@ impl TestEnvironment {
                 .arg(epoch.to_string()),
             false,
         );
+    }
+
+    /// Sets the current time
+    pub fn set_current_time(&mut self, time: Instant) {
+        let utc_time = UtcDateTime::from_instant(&time).unwrap();
+
+        run_command(Command::new("resim").arg("set-current-time").arg(format!("{}", utc_time)), false);
     }
 
     /// Sets the current account to be used
@@ -405,6 +454,11 @@ impl TestEnvironment {
                 self.current_package = Some(real_name);
             }
         }
+    }
+
+    pub fn get_current_package_name(&self) -> &str
+    {
+        self.current_package.as_ref().unwrap()
     }
 
     /// Returns a reference to the current component
@@ -610,7 +664,7 @@ impl TestEnvironment {
         package_path: &str,
         package_address: &str,
         args: &Vec<Arg>,
-    ) -> String
+    ) -> (String, String)
     where
         B: Blueprint + ?Sized,
     {
@@ -626,8 +680,8 @@ impl TestEnvironment {
         env_binding.push((Manifest::package_arg(), package_address.to_string()));
 
         self.generate_bindings(args, &mut env_binding);
-        let (_, stdout) = run_manifest(package_path, name.as_str(), false, env_binding);
-        stdout
+        let (_, stdout, stderr) = run_manifest(package_path, name.as_str(), false, env_binding);
+        (stdout, stderr)
     }
 
     fn reset() {

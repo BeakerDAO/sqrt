@@ -61,13 +61,13 @@ impl<'a> ManifestCall<'a> {
             panic!("Cannot run a manifest without specifying what to call")
         }
 
-        let (manifest_output, stdout) = run_manifest(
+        let (manifest_output, stdout, stderr) = run_manifest(
             self.test_environment.get_current_package().path(),
             self.manifest_name.unwrap().as_str(),
             self.custom_manifest.unwrap(),
             self.env_bindings,
         );
-        self.expected_error.check_error(stdout);
+        self.expected_error.check_error(stdout, stderr);
         self.test_environment.update();
 
         if self.output_manifest {
@@ -75,5 +75,23 @@ impl<'a> ManifestCall<'a> {
         } else {
             None
         }
+    }
+
+    /// Runs a [`ManifestCall`] and returns the transaction manifest output
+    pub fn debug_manifest(self) -> (String, String) {
+
+        if self.manifest_name.is_none() || self.custom_manifest.is_none() {
+            panic!("Cannot debug a manifest without specifying what to call")
+        }
+
+        let (_, stdout, stderr) = run_manifest(
+            self.test_environment.get_current_package().path(),
+            self.manifest_name.unwrap().as_str(),
+            self.custom_manifest.unwrap(),
+            self.env_bindings,
+        );
+        self.test_environment.update();
+
+        (stdout, stderr)
     }
 }

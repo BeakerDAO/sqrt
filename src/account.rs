@@ -17,7 +17,7 @@ impl Account {
     pub fn new() -> Account {
         let account_command = run_command(Command::new("resim").arg("new-account"), false);
         let badge = generate_owner_badge();
-        Self::from(&account_command, badge)
+        Self::from(&account_command.0, badge)
     }
 
     pub fn from(string_with_info: &str, badge_address: String) -> Account {

@@ -193,7 +193,7 @@ impl TestEnvironment {
                 let output = self.instantiate(blueprint, package.path(), package.address(), &args);
 
                 lazy_static! {
-                    static ref COMPONENT_RE: Regex = Regex::new(r#"Component: (\w*)"#).unwrap();
+                    static ref COMPONENT_RE: Regex = Regex::new(r#"ComponentAddress\("(\w*)"\)"#).unwrap();
                 }
 
                 let component_address = &COMPONENT_RE.captures(&output.0).expect(&format!(
@@ -239,6 +239,17 @@ impl TestEnvironment {
                 );
             }
         }
+    }
+
+    pub fn new_component_from(&mut self, package: &str, component_name: &str, component_address: String, admin_badge_address: Option<String>)
+    {
+        if self.components.contains_key(component_name) {
+            panic!("A component with the same name already exists!")
+        }
+
+        let package = self.packages.get(package).unwrap();
+        let comp = Component::from(&component_address, package.path(), admin_badge_address);
+        self.components.insert(component_name.to_string(), comp);
     }
 
     /// Creates a [`ManifestCall`] for the given method
@@ -456,9 +467,9 @@ impl TestEnvironment {
         }
     }
 
-    pub fn get_current_package_name(&self) -> &str
+    pub fn get_current_package_name(&self) -> Option<&str>
     {
-        self.current_package.as_ref().unwrap()
+        self.current_package.as_deref()
     }
 
     /// Returns a reference to the current component
@@ -471,8 +482,8 @@ impl TestEnvironment {
         self.components.get(current).unwrap()
     }
 
-    pub fn get_current_component_name(&self) -> &str {
-        self.current_component.as_ref().unwrap()
+    pub fn get_current_component_name(&self) -> Option<&str> {
+        self.current_component.as_deref()
     }
 
     /// Sets the current component to be used
@@ -533,7 +544,11 @@ impl TestEnvironment {
         let mut manifest = Manifest::new();
         manifest.call_method(method);
         let manifest_string = manifest.build();
-        write_manifest(manifest_string, path, method.name());
+        let manifest_name = match method.custom_manifest_name() {
+            None => method.name(),
+            Some(name) => name
+        };
+        write_manifest(manifest_string, path, manifest_name);
     }
 
     fn get_binding_for(&self, arg: &Arg, arg_count: u32) -> (String, String) {
@@ -588,7 +603,7 @@ impl TestEnvironment {
             }
 
             Arg::EnumArg(variant, fields) => {
-                format!("{}, {}", variant, self.get_binding_for_elements(fields))
+                format!("{}u8, {}", variant, self.get_binding_for_elements(fields))
             }
             Arg::TupleArg(elements) | Arg::VecArg(elements) => {
                 format!("{}", self.get_binding_for_elements(elements))
@@ -651,7 +666,9 @@ impl TestEnvironment {
         let mut string = String::new();
         for arg in args {
             let (_, value) = self.get_binding_for(arg, 0);
-            string = format!("{}{}, ", string, value)
+            let fake_generic = arg.to_generic(0);
+            let arg_str = fake_generic.replace("${arg_0}", &value);
+            string = format!("{}{}, ", string, arg_str)
         }
         string.pop();
         string.pop();
@@ -720,8 +737,13 @@ impl TestEnvironment {
             }
         }
 
+        let manifest_name = match method.custom_manifest_name() {
+            None => method.name(),
+            Some(name) => name
+        };
+
         ManifestCall::new(self)
-            .call_manifest(method.name(), false)
+            .call_manifest(manifest_name, false)
             .add_bindings(&mut env_binding)
     }
 

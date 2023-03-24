@@ -13,6 +13,9 @@ pub trait Method {
 
     /// Return whether the function needs an admin badge to get called
     fn needs_admin_badge(&self) -> bool;
+
+    /// Returns whether to use a custom manifest name
+    fn custom_manifest_name(&self) -> Option<&str>;
 }
 
 #[derive(Clone)]
@@ -32,7 +35,7 @@ pub enum Arg {
     U128(u128),
     StringArg(String),
     /// Enum Argument. The [String] should be the name of the variant of the Enum and the [Vec] the arguments of the variant.
-    EnumArg(String, Vec<Arg>),
+    EnumArg(u8, Vec<Arg>),
     /// Represents a Tuple. The [Vec] should contain the content of the Tuple as other `Arg`s
     TupleArg(Vec<Arg>),
     /// Represents a Vec. The [Vec] should contain the content of the Tuple as other `Arg`s
@@ -189,3 +192,31 @@ macro_rules! method_args {
         Some(temp_vec)
     }};
 }
+
+#[macro_export]
+macro_rules! enum_arg {
+
+    ($int:expr) => (
+        Arg::EnumArg($int, Vec::new())
+    );
+
+    ($int:expr, $( $x:expr ),*) => {{
+        let mut temp_vec = Vec::new();
+            $(
+                temp_vec.push($x);
+            )*
+        Arg::EnumArg($int, temp_vec)
+    }};
+}
+
+#[macro_export]
+macro_rules! tuple_arg {
+     ($( $x:expr ),*) => {{
+        let mut temp_vec = Vec::new();
+            $(
+                temp_vec.push($x);
+            )*
+        Arg::TupleArg(temp_vec)
+    }};
+}
+

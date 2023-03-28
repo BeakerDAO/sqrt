@@ -35,8 +35,8 @@ impl Blueprint for RadiSwapBp {
         "Radiswap"
     }
 
-    fn has_admin_badge(&self) -> bool {
-        false
+    fn has_admin_badge(&self) -> AdminBadge {
+        AdminBadge::None
     }
 }
 ```
@@ -184,6 +184,10 @@ impl Method for RadiSwapMethods {
 
     fn needs_admin_badge(&self) -> bool {
         false
+    }
+
+    fn custom_manifest_name(&self) -> Option<&str> {
+        None
     }
 }
 ```

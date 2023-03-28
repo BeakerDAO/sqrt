@@ -28,8 +28,8 @@ impl Blueprint for GumballBp {
         "GumballMachine"
     }
 
-    fn has_admin_badge(&self) -> bool {
-        false
+    fn has_admin_badge(&self) -> AdminBadge {
+        AdminBadge::None
     }
 }
 ```
@@ -123,6 +123,10 @@ impl Method for GumballMethods {
 
     fn needs_admin_badge(&self) -> bool {
         false
+    }
+
+    fn custom_manifest_name(&self) -> Option<&str> {
+        None
     }
 }
 ```

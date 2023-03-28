@@ -11,7 +11,7 @@ pub trait Method {
     /// Returns the arguments of the method
     fn args(&self) -> Option<Vec<Arg>>;
 
-    /// Return whether the function needs an admin badge to get called
+    /// Returns whether the function needs an admin badge to get called
     fn needs_admin_badge(&self) -> bool;
 
     /// Returns whether to use a custom manifest name
@@ -219,4 +219,3 @@ macro_rules! tuple_arg {
         Arg::TupleArg(temp_vec)
     }};
 }
-

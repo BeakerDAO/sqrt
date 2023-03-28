@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod radiswap_test {
     use scrypto::prelude::{dec, Decimal};
-    use sqrt::blueprint::Blueprint;
+    use sqrt::blueprint::{AdminBadge, Blueprint};
     use sqrt::method::Arg::{DecimalArg, FungibleBucketArg, StringArg};
     use sqrt::method::{Arg, Method};
     use sqrt::method_args;
@@ -19,8 +19,8 @@ mod radiswap_test {
             "Radiswap"
         }
 
-        fn has_admin_badge(&self) -> bool {
-            false
+        fn has_admin_badge(&self) -> AdminBadge {
+            AdminBadge::None
         }
     }
 
@@ -58,6 +58,10 @@ mod radiswap_test {
 
         fn needs_admin_badge(&self) -> bool {
             false
+        }
+
+        fn custom_manifest_name(&self) -> Option<&str> {
+            None
         }
     }
 

@@ -19,11 +19,11 @@ impl Error {
     /// # Arguments
     /// * `stdout` - String containing the stdout to check
     pub fn check_error(&self, stdout: String, stderr: String) {
-
-
-        if stdout == String::from("")
-        {
-            panic!("There was an error when trying to run manifest:\n{}", stderr);
+        if stdout == String::from("") {
+            panic!(
+                "There was an error when trying to run manifest:\n{}",
+                stderr
+            );
         }
 
         match self {
@@ -88,10 +88,17 @@ impl Error {
     }
 }
 
+/// Constructs an `AssertFailed` error from an expected error message.
+///
+/// # Arguments
+/// * `error_message` - expected error message
 pub fn assert_fail(error_message: &str) -> Error {
     AssertFailed(Error::to_regex_str(error_message))
 }
 
+/// Constructs an `Other` error from an expected error.
+/// # Arguments
+/// * `error` - expected error
 pub fn other_error(error: &str) -> Error {
     Other(Error::to_regex_str(error))
 }

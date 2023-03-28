@@ -8,13 +8,13 @@ pub trait Blueprint {
     /// Returns the name of the blueprint
     fn name(&self) -> &str;
 
-    /// Returns whether the blueprints has an admin badge
+    /// Returns the type of admin badge used by the blueprint
     fn has_admin_badge(&self) -> AdminBadge;
 }
 
-
-pub enum AdminBadge{
+/// Defines the type of admin badge used by a blueprint
+pub enum AdminBadge {
     Internal,
     External(String),
-    None
+    None,
 }

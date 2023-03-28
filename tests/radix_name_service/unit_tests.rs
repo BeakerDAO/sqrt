@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod rns_tests {
     use scrypto::prelude::{dec, Decimal};
-    use sqrt::blueprint::Blueprint;
+    use sqrt::blueprint::{AdminBadge, Blueprint};
     use sqrt::error::assert_fail;
     use sqrt::method::Arg::{
         AccountAddressArg, DecimalArg, FungibleBucketArg, NonFungibleBucketArg,
@@ -23,8 +23,8 @@ mod rns_tests {
             "RadixNameService"
         }
 
-        fn has_admin_badge(&self) -> bool {
-            true
+        fn has_admin_badge(&self) -> AdminBadge {
+            AdminBadge::Internal
         }
     }
 
@@ -79,6 +79,10 @@ mod rns_tests {
                 RNSMethods::WithdrawFees => true,
                 _ => false,
             }
+        }
+
+        fn custom_manifest_name(&self) -> Option<&str> {
+            None
         }
     }
 
@@ -269,7 +273,7 @@ mod rns_tests {
 
         test_env
             .call_method(RNSMethods::WithdrawFees)
-            .should_panic(assert_fail("à"))
+            .should_panic(assert_fail("No such resource in account"))
             .run();
     }
 }

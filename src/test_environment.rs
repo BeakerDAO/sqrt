@@ -96,18 +96,16 @@ impl TestEnvironment {
         }
     }
 
-
     /// Creates a new token with mutable supply and with a given name
     ///
     /// # Arguments
     /// * `name` - name associated to the token
-    /// * `minter_badge` - minter resource address
+    /// * `minter_badge` - name associated to the badge that will be used to mint the token
     pub fn create_mintable_token(&mut self, name: &str, minter_badge: &str) {
         let name = String::from(name);
         if self.resource_manager.exists(&name) {
             panic!("A token with same name already exists!")
         } else {
-
             let minter_badge = self.resource_manager.get_address(minter_badge);
 
             let output = run_command(
@@ -127,7 +125,6 @@ impl TestEnvironment {
                 .add_resource(&name, resource_address, true);
             self.update_current_account();
         }
-
     }
 
     /// Publishes a new package to resim and the test environment
@@ -175,7 +172,7 @@ impl TestEnvironment {
     /// # Arguments
     /// * `name` - name associated to the component
     /// * `blueprint_name` - name of the blueprint
-    /// * `args_values` - value of the arguments needed to instantiate the Component
+    /// * `args` - value of the arguments needed to instantiate the Component
     pub fn new_component(&mut self, name: &str, blueprint_name: &str, args: Vec<Arg>) {
         if self.current_package.is_none() {
             panic!("Please create a package first");
@@ -193,7 +190,8 @@ impl TestEnvironment {
                 let output = self.instantiate(blueprint, package.path(), package.address(), &args);
 
                 lazy_static! {
-                    static ref COMPONENT_RE: Regex = Regex::new(r#"ComponentAddress\("(\w*)"\)"#).unwrap();
+                    static ref COMPONENT_RE: Regex =
+                        Regex::new(r#"ComponentAddress\("(\w*)"\)"#).unwrap();
                 }
 
                 let component_address = &COMPONENT_RE.captures(&output.0).expect(&format!(
@@ -202,11 +200,11 @@ impl TestEnvironment {
                 ))[1];
 
                 let opt_badge: Option<String> = match blueprint.has_admin_badge() {
-
                     AdminBadge::Internal => {
                         lazy_static! {
-                        static ref ADMIN_BADGE: Regex = Regex::new(r#"Resource: (\w*)"#).unwrap();
-                    }
+                            static ref ADMIN_BADGE: Regex =
+                                Regex::new(r#"Resource: (\w*)"#).unwrap();
+                        }
 
                         let badge = &ADMIN_BADGE
                             .captures(&output.0)
@@ -214,12 +212,13 @@ impl TestEnvironment {
                         Some(String::from(badge))
                     }
 
-                    AdminBadge::External(admin_badge_address) => {
-                        Some(self.resource_manager.get_address(&admin_badge_address).clone())
-                    }
+                    AdminBadge::External(admin_badge_address) => Some(
+                        self.resource_manager
+                            .get_address(&admin_badge_address)
+                            .clone(),
+                    ),
 
-                    AdminBadge::None => { None }
-
+                    AdminBadge::None => None,
                 };
 
                 let comp = Component::from(component_address, package.path(), opt_badge);
@@ -241,8 +240,19 @@ impl TestEnvironment {
         }
     }
 
-    pub fn new_component_from(&mut self, package: &str, component_name: &str, component_address: String, admin_badge_address: Option<String>)
-    {
+    /// Manually adds an instantiated component to the [`TestEnvironment`]
+    ///
+    /// * `package` - package associated to the component
+    /// * `component_name` - custom name for the component
+    /// * `component_address` - address of the component
+    /// * `admin_badge_address` - optional address of the admin badge of the component
+    pub fn new_component_from(
+        &mut self,
+        package: &str,
+        component_name: &str,
+        component_address: String,
+        admin_badge_address: Option<String>,
+    ) {
         if self.components.contains_key(component_name) {
             panic!("A component with the same name already exists!")
         }
@@ -344,7 +354,12 @@ impl TestEnvironment {
     pub fn set_current_time(&mut self, time: Instant) {
         let utc_time = UtcDateTime::from_instant(&time).unwrap();
 
-        run_command(Command::new("resim").arg("set-current-time").arg(format!("{}", utc_time)), false);
+        run_command(
+            Command::new("resim")
+                .arg("set-current-time")
+                .arg(format!("{}", utc_time)),
+            false,
+        );
     }
 
     /// Sets the current account to be used
@@ -369,14 +384,20 @@ impl TestEnvironment {
         self.current_account = real_name;
     }
 
+    /// Returns the address of the current acocunt
     pub fn get_current_account_address(&self) -> &str {
         self.get_current_account().address()
     }
 
+    /// Returns the name given to the current account
     pub fn get_current_account_name(&self) -> &str {
         &self.current_account
     }
 
+    /// Returns the address of a given account
+    ///
+    /// # Arguments
+    /// * `name` - name given to the account for which to get the address
     pub fn get_account_address(&self, name: &str) -> &str {
         self.get_account(name).unwrap().address()
     }
@@ -467,8 +488,8 @@ impl TestEnvironment {
         }
     }
 
-    pub fn get_current_package_name(&self) -> Option<&str>
-    {
+    /// Returns the name given to the current active package
+    pub fn get_current_package_name(&self) -> Option<&str> {
         self.current_package.as_deref()
     }
 
@@ -482,6 +503,7 @@ impl TestEnvironment {
         self.components.get(current).unwrap()
     }
 
+    /// Returns the name given to the current active component
     pub fn get_current_component_name(&self) -> Option<&str> {
         self.current_component.as_deref()
     }
@@ -546,7 +568,7 @@ impl TestEnvironment {
         let manifest_string = manifest.build();
         let manifest_name = match method.custom_manifest_name() {
             None => method.name(),
-            Some(name) => name
+            Some(name) => name,
         };
         write_manifest(manifest_string, path, manifest_name);
     }
@@ -739,7 +761,7 @@ impl TestEnvironment {
 
         let manifest_name = match method.custom_manifest_name() {
             None => method.name(),
-            Some(name) => name
+            Some(name) => name,
         };
 
         ManifestCall::new(self)

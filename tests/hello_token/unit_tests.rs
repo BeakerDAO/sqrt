@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod hello_tests {
     use scrypto::math::Decimal;
-    use sqrt::blueprint::Blueprint;
+    use sqrt::blueprint::{AdminBadge, Blueprint};
     use sqrt::method::{Arg, Method};
     use sqrt::method_args;
     use sqrt::package::Package;
@@ -23,8 +23,8 @@ mod hello_tests {
         }
 
         // The "Hello" blueprint does not use an admin badge
-        fn has_admin_badge(&self) -> bool {
-            false
+        fn has_admin_badge(&self) -> AdminBadge {
+            AdminBadge::None
         }
     }
 
@@ -54,6 +54,11 @@ mod hello_tests {
         // None of our methods requires the Component's admin badge to be called, so we always return false
         fn needs_admin_badge(&self) -> bool {
             false
+        }
+
+        // None of our methods require a custom name
+        fn custom_manifest_name(&self) -> Option<&str> {
+            None
         }
     }
 

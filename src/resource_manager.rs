@@ -74,8 +74,9 @@ impl ResourceManager {
                 Regex::new(r#"NonFungibleLocalId\("(.*)"\), immutable_data"#).unwrap();
         }
 
-        let mut non_fungible_vec: Vec<Captures> =
-            NON_FUNGIBLE_RE.captures_iter(&account_resources.0).collect();
+        let mut non_fungible_vec: Vec<Captures> = NON_FUNGIBLE_RE
+            .captures_iter(&account_resources.0)
+            .collect();
 
         for resource in RESOURCE_RE.captures_iter(&account_resources.0) {
             let amount = Decimal::from(&resource[1]);

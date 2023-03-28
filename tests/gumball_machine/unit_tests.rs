@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod gumball_tests {
     use scrypto::prelude::{dec, Decimal};
-    use sqrt::blueprint::Blueprint;
+    use sqrt::blueprint::{AdminBadge, Blueprint};
     use sqrt::error::other_error;
     use sqrt::method::Arg::DecimalArg;
     use sqrt::method::{Arg, Method};
@@ -20,8 +20,8 @@ mod gumball_tests {
             "GumballMachine"
         }
 
-        fn has_admin_badge(&self) -> bool {
-            false
+        fn has_admin_badge(&self) -> AdminBadge {
+            AdminBadge::None
         }
     }
 
@@ -51,6 +51,10 @@ mod gumball_tests {
 
         fn needs_admin_badge(&self) -> bool {
             false
+        }
+
+        fn custom_manifest_name(&self) -> Option<&str> {
+            None
         }
     }
 

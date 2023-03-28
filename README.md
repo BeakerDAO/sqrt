@@ -1,6 +1,7 @@
  # The SQRT library
-The Scrypto Quick Rtm Testing library is a tool that enables its users to easily generate and use Radix Transaction Manifests to test a Scrypto package.  
-The Transaction Manifests are exported in a `rtm` subdirectory located in the package directory.
+The Scrypto Quick Rtm Testing library is a tool that enables its users to easily generate and use Radix Transaction 
+Manifests to test a Scrypto package. The Transaction Manifests are exported in a `rtm` subdirectory located in the 
+package directory.
  
 # Usage
 To be able to use this library for your tests, add the following line to your `[dev-dependencies]`:
@@ -8,8 +9,15 @@ To be able to use this library for your tests, add the following line to your `[
 sqrt = { git = "https://github.com/PointSquare/sqrt" }
 ```
 
-To use the library, you have to tell it in your test files how to instantiate your component and call your methods.
-We explain in the following subsections how to do so
+# Disclaimer
+This tool was originally built for personal use and therefore its updates might break previous code.
+
+# Examples
+Some simple examples are available in the [test](tests) directory. For bigger projects, a broader example can be found
+[here](https://github.com/PointSquare/stoichiometric).
+
+To use the library, you have to implement two traits that will explain it how to instantiate your component and call your methods.
+We explain in the following subsections how to do so.
 
 ## Test Environments
 
@@ -26,12 +34,11 @@ pub trait Blueprint {
     /// Returns the name of the function to instantiate the blueprint
     fn instantiation_name(&self) -> &str;
 
-
-    // Returns the name of the blueprint
+    /// Returns the name of the blueprint
     fn name(&self) -> &str;
 
-    // Returns whether the blueprints has an admin badge
-    fn has_admin_badge(&self) -> bool;
+    /// Returns the type of admin badge used by the blueprint
+    fn has_admin_badge(&self) -> AdminBadge;
 }
 ```
 
@@ -44,7 +51,7 @@ impl Blueprint for TestBp { /* Implementation */ }
 
 ## Method trait 
 
-The other trait to implement is the `Method` trait. It tells SQRT how to call methods for your blueprint: 
+The other trait to implement is the `Method` trait. It explains SQRT how to call methods for your blueprint: 
 ```Rust
 pub trait Method {
     /// Returns the name of the method
@@ -53,8 +60,11 @@ pub trait Method {
     /// Returns the arguments of the method
     fn args(&self) -> Option<Vec<Arg>>;
 
-    /// Return whether the function needs an admin badge to get called
+    /// Returns whether the function needs an admin badge to get called
     fn needs_admin_badge(&self) -> bool;
+
+    /// Returns whether to use a custom manifest name
+    fn custom_manifest_name(&self) -> Option<&str>;
 }
 ```
 The standard way of implementing the trait is to create an `Enum` with one variant for every method of the blueprint. 
@@ -175,9 +185,6 @@ The way SQRT deals with methods and functions argument is by the `Arg` enum. The
 | `PreciseDecimalArg(PreciseDecimal)`         | `PreciseDecimal`                                | `PreciseDecimal`: a PreciseDecimal                                                                                                   | `Arg::PrecisedDecimalArg(pdec!(2))`                                                                                                                  |
 | `NonFungibleIdArg(Box<Arg>)`                | `NonFungibleId`                                 | `Box<Arg>`: a Box to an `Arg` representing a NpnFungibleId                                                                           | `Arg::NonFungibleIdArg(Box::new(Arg::U128(1234567890u128)))`                                                                                         |
 
-
-# Examples
- Some examples are available in the [test](tests) directory.
 
 # Launch tests
 Once the tests are written, use the following command to launch them:

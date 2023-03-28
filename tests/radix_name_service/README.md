@@ -31,8 +31,8 @@ impl Blueprint for RNSBp {
     }
 
     // The blueprint creates an admin badge, so we tell it to SQRT
-    fn has_admin_badge(&self) -> bool {
-        true
+    fn has_admin_badge(&self) -> AdminBadge {
+        AdminBadge::None
     }
 }
 ```
@@ -206,6 +206,10 @@ impl Method for RNSMethods {
             RNSMethods::WithdrawFees => true,
             _ => false,
         }
+    }
+    
+    fn custom_manifest_name(&self) -> Option<&str> {
+        None
     }
 }
 ```

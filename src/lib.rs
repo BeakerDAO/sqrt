@@ -2,4 +2,5 @@ mod account;
 mod compiler;
 mod formattable;
 mod test_engine;
-mod test_environment;
+pub mod test_environment;
+mod state_hash;

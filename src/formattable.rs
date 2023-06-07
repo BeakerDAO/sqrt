@@ -2,14 +2,8 @@ pub trait Formattable {
     fn format(&self) -> String;
 }
 
-impl Formattable for String {
+impl<T> Formattable for T where T: ToString {
     fn format(&self) -> String {
-        self.to_lowercase().replace("_", " ")
-    }
-}
-
-impl Formattable for str {
-    fn format(&self) -> String {
-        String::from(&self).to_lowercase().replace("_", " ")
+        self.to_string().to_lowercase().replace("_", " ")
     }
 }

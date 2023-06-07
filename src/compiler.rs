@@ -22,7 +22,7 @@ pub fn compile<P: AsRef<Path>>(package_dir: P) -> (Vec<u8>, PackageSchema) {
     cargo.push("Cargo.toml");
     let wasm_name = if cargo.exists() {
         let content = fs::read_to_string(&cargo).expect("Failed to read the Cargo.toml file");
-        Self::extract_crate_name(&content)
+        extract_crate_name(&content)
             .expect("Failed to extract crate name from the Cargo.toml file")
             .replace("-", "_")
     } else {

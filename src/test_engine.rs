@@ -1,45 +1,58 @@
-use crate::account::Account;
-use crate::compiler::compile;
-use radix_engine::kernel::interpreters::ScryptoInterpreter;
-use radix_engine::ledger::{
-    ReadableSubstateStore, StateTreeTraverser, TypedInMemorySubstateStore, VaultFinder,
-};
-use radix_engine::transaction::{
-    execute_transaction, ExecutionConfig, FeeReserveConfig, TransactionReceipt, TransactionResult,
-};
-use radix_engine::types::{ComponentAddress, Decimal, PackageAddress, ResourceAddress};
-use radix_engine::wasm::{DefaultWasmEngine, WasmInstrumenter, WasmMeteringConfig};
-use radix_engine_interface::api::types::{
-    NodeModuleId, ObjectId, RENodeId, SubstateId, SubstateOffset, VaultOffset,
-};
-use radix_engine_interface::blueprints::resource::{AccessRulesConfig, NonFungibleGlobalId};
-use radix_engine_interface::constants::FAUCET_COMPONENT;
-use radix_engine_interface::rule;
-use std::collections::BTreeMap;
 use std::path::Path;
+
+use radix_engine::kernel::interpreters::ScryptoInterpreter;
+use radix_engine::ledger::*;
+use radix_engine::transaction::{execute_transaction, ExecutionConfig, FeeReserveConfig, TransactionReceipt, TransactionResult};
+use radix_engine::types::*;
+use radix_engine::wasm::{DefaultWasmEngine, WasmInstrumenter, WasmMeteringConfig};
+use radix_engine_interface::{dec, rule};
+use radix_engine_interface::api::node_modules::auth::AuthAddresses;
+use radix_engine_interface::api::node_modules::metadata::MetadataEntry;
+use radix_engine_interface::api::types::{RENodeId, VaultOffset};
+use radix_engine_interface::blueprints::resource::*;
+use radix_engine_interface::constants::FAUCET_COMPONENT;
+use radix_engine_interface::math::Decimal;
 use transaction::builder::ManifestBuilder;
 use transaction::ecdsa_secp256k1::EcdsaSecp256k1PrivateKey;
-use transaction::model::{TestTransaction, TransactionManifest};
+use transaction::model::{Executable, TestTransaction};
+use transaction::model::TransactionManifest;
+
+use crate::account::Account;
+use crate::compiler::compile;
+use crate::state_hash::StateHashSupport;
 
 pub struct TestEngine {
-    scrypto_interpreter: ScryptoInterpreter<DefaultWasmEngine>,
-    sub_state_store: TypedInMemorySubstateStore,
     next_private_key: u64,
     next_transaction_nonce: u64,
+    scrypto_interpreter: ScryptoInterpreter<DefaultWasmEngine>,
+    state_hash_support: StateHashSupport,
+    sub_state_store: TypedInMemorySubstateStore,
 }
 
 impl TestEngine {
     pub fn new() -> Self {
-        Self {
+        let mut engine = Self {
+            next_private_key: 1,
+            next_transaction_nonce: 0,
             scrypto_interpreter: ScryptoInterpreter {
                 wasm_metering_config: WasmMeteringConfig::V0,
                 wasm_engine: DefaultWasmEngine::default(),
                 wasm_instrumenter: WasmInstrumenter::default(),
             },
-            sub_state_store: TypedInMemorySubstateStore::new(),
-            next_private_key: 1,
-            next_transaction_nonce: 0,
-        }
+            state_hash_support: StateHashSupport::new(),
+            sub_state_store: TypedInMemorySubstateStore::new()
+        };
+
+
+        let genesis =  create_genesis(BTreeMap::new(), BTreeMap::new(), 1u64, 1u64, 1u64);
+        let receipt = engine.execute_transaction(
+            genesis.get_executable(vec![AuthAddresses::system_role()]),
+            &FeeReserveConfig::default(),
+            &ExecutionConfig::genesis(),
+        );
+        receipt.expect_commit_success();
+        engine.generate_initial_validators(10);
+        engine
     }
 
     pub fn execute_manifest(
@@ -47,27 +60,42 @@ impl TestEngine {
         manifest: TransactionManifest,
         initial_proofs: Vec<NonFungibleGlobalId>,
     ) -> TransactionReceipt {
-        let transaction = TestTransaction::new(manifest, self.next_transaction_nonce(), -1);
+
+        let transaction = TestTransaction::new(manifest, self.next_transaction_nonce(), u32::MAX);
         let executable = transaction.get_executable(initial_proofs);
         let fee_reserve_config = FeeReserveConfig::default();
         let execution_config = ExecutionConfig::default();
 
-        let transaction_receipt = execute_transaction(
-            &mut self.substate_store,
-            &self.scrypto_interpreter,
+        let transaction_receipt = self.execute_transaction(
+            executable,
             &fee_reserve_config,
             &execution_config,
-            &executable,
         );
 
-        if let TransactionResult::Commit(commit) = &transaction_receipt.result {
-            let commit_receipt = commit.state_updates.commit(&mut self.substate_store);
-            if let Some(state_hash_support) = &mut self.state_hash_support {
-                state_hash_support.update_with(commit_receipt.outputs);
-            }
-        }
-
         transaction_receipt
+    }
+
+    pub fn execute_transaction(
+        &mut self,
+        executable: Executable,
+        fee_reserve_config: &FeeReserveConfig,
+        execution_config: &ExecutionConfig,
+    ) -> TransactionReceipt {
+
+        let receipt = execute_transaction(
+            &mut self.sub_state_store,
+            &self.scrypto_interpreter,
+            fee_reserve_config,
+            execution_config,
+            &executable
+        );
+
+        if let TransactionResult::Commit(commit) = &receipt.result {
+            let commit_receipt = commit.state_updates.commit(&mut self.sub_state_store);
+            self.state_hash_support.update_with(commit_receipt.outputs);
+        };
+
+        receipt
     }
 
     pub fn get_balance_of(
@@ -79,7 +107,7 @@ impl TestEngine {
         let mut vault_finder = VaultFinder::new(resource_address);
 
         let mut state_tree_visitor =
-            StateTreeTraverser::new(&self.substate_store, &mut vault_finder, 100);
+            StateTreeTraverser::new(&self.sub_state_store, &mut vault_finder, 100);
         state_tree_visitor
             .traverse_all_descendents(None, node_id)
             .unwrap();
@@ -90,12 +118,37 @@ impl TestEngine {
             .map_or(Decimal::zero(), |vault_id| self.get_vault_balance(vault_id))
     }
 
+    pub fn get_metadata(&self, address: Address, key: &str) -> Option<MetadataEntry> {
+        let metadata_entry = self
+            .sub_state_store
+            .get_substate(&SubstateId(
+                address.into(),
+                NodeModuleId::Metadata,
+                SubstateOffset::KeyValueStore(KeyValueStoreOffset::Entry(
+                    scrypto_encode(key).unwrap(),
+                )),
+            ))
+            .map(|s| s.substate.to_runtime())?;
+
+        let metadata_entry: Option<ScryptoValue> = metadata_entry.into();
+        let metadata_entry = match metadata_entry {
+            Some(value) => {
+                let value: MetadataEntry =
+                    scrypto_decode(&scrypto_encode(&value).unwrap()).unwrap();
+                Some(value)
+            }
+            None => None,
+        };
+
+        metadata_entry
+    }
+
     pub fn new_account(&mut self) -> Account {
-        let private_key = EcdsaSecp256k1PrivateKey::from_u64(self.next_private_key()).unwrap();
-        let public_key = private_key.public_key();
+        let (public_key, private_key) = self.new_key_pair();
         let manifest = ManifestBuilder::new()
+            .lock_fee(FAUCET_COMPONENT, dec!(100))
             .new_account(rule!(require(NonFungibleGlobalId::from_public_key(
-                &key_pair.0
+                &public_key
             ))))
             .build();
 
@@ -138,7 +191,7 @@ impl TestEngine {
     }
 
     fn get_vault_balance(&self, vault_id: &ObjectId) -> Decimal {
-        if let Some(output) = self.substate_store().get_substate(&SubstateId(
+        if let Some(output) = self.sub_state_store.get_substate(&SubstateId(
             RENodeId::Object(vault_id.clone()),
             NodeModuleId::SELF,
             SubstateOffset::Vault(VaultOffset::Info),
@@ -153,7 +206,7 @@ impl TestEngine {
                     .map(|mut output| output.substate.vault_liquid_fungible_mut().amount())
                     .unwrap_or(Decimal::zero())
             } else {
-                self.substate_store()
+                self.sub_state_store
                     .get_substate(&SubstateId(
                         RENodeId::Object(vault_id.clone()),
                         NodeModuleId::SELF,
@@ -166,13 +219,18 @@ impl TestEngine {
                             .ids()
                             .clone()
                     })
-                    .map(|ids| ids.len().into())
+                    .map(|ids| ids.len().into()).unwrap_or(Decimal::zero())
             }
         } else {
             Decimal::zero()
         }
     }
 
+    fn new_key_pair(&mut self) -> (EcdsaSecp256k1PublicKey, EcdsaSecp256k1PrivateKey) {
+        let private_key = EcdsaSecp256k1PrivateKey::from_u64(self.next_private_key()).unwrap();
+        let public_key = private_key.public_key();
+        (public_key, private_key)
+    }
     fn next_transaction_nonce(&mut self) -> u64 {
         self.next_transaction_nonce += 1;
         self.next_transaction_nonce - 1
@@ -182,4 +240,19 @@ impl TestEngine {
         self.next_private_key += 1;
         self.next_private_key - 1
     }
+
+    fn generate_initial_validators(&mut self, amount: usize) {
+        for _ in 0..amount {
+            let (pub_key, _) = self.new_key_pair();
+            let non_fungible_id = NonFungibleGlobalId::from_public_key(&pub_key);
+            let manifest = ManifestBuilder::new()
+                .lock_fee(FAUCET_COMPONENT, 10.into())
+                .create_validator(pub_key, rule!(require(non_fungible_id)))
+                .build();
+            let receipt = self.execute_manifest(manifest, vec![]);
+            receipt.expect_commit(true);
+        }
+    }
 }
+
+

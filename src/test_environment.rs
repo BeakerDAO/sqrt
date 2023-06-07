@@ -1,21 +1,26 @@
+use std::collections::HashMap;
+use std::path::Path;
+use radix_engine::log;
+
+use radix_engine::transaction::CommitResult;
+use radix_engine::types::{Address, PackageAddress, ResourceAddress};
+use radix_engine_interface::api::node_modules::metadata::{MetadataEntry, MetadataValue};
+
 use crate::account::Account;
 use crate::formattable::Formattable;
 use crate::test_engine::TestEngine;
-use radix_engine::types::{PackageAddress, ResourceAddress};
-use radix_engine_interface::blueprints::resource::NonFungibleGlobalId;
-use std::collections::HashMap;
-use std::path::Path;
 
 pub struct TestEnvironment {
     accounts: HashMap<String, Account>,
     current_account: String,
     fungibles: HashMap<String, ResourceAddress>,
-    non_fungibles: HashMap<String, NonFungibleGlobalId>,
+    non_fungibles: HashMap<String, ResourceAddress>,
     packages: HashMap<String, PackageAddress>,
     test_engine: TestEngine,
 }
 
 impl TestEnvironment {
+
     /// Returns a new test environment with default configuration.
     pub fn new() -> Self {
         let mut test_engine = TestEngine::new();
@@ -86,7 +91,6 @@ impl TestEnvironment {
         &mut self,
         name: F,
         path: P,
-        owner_badge: F,
     ) {
         let formatted_name = name.format();
         match self.packages.get(&formatted_name) {
@@ -94,12 +98,18 @@ impl TestEnvironment {
                 panic!("A package with name {} already exists", formatted_name)
             }
             None => {
-                let owner_badge = self.get_non_fungible(owner_badge);
                 let new_package = self
                     .test_engine
-                    .publish_package_with_owner(path, owner_badge.clone());
+                    .publish_package_with_owner(path, self.current_account().owner_badge());
                 self.packages.insert(formatted_name, new_package);
             }
+        }
+    }
+
+    pub fn exists_resource<F: Formattable>(&self, name: F) -> bool {
+        match self.fungibles.get(&name.format()) {
+            None => self.non_fungibles.contains_key(&name.format()),
+            Some(_) => true,
         }
     }
 
@@ -121,7 +131,7 @@ impl TestEnvironment {
         }
     }
 
-    fn get_non_fungible<F: Formattable>(&self, name: F) -> &NonFungibleGlobalId {
+    fn get_non_fungible<F: Formattable>(&self, name: F) -> &ResourceAddress {
         match self.non_fungibles.get(&name.format()) {
             None => {
                 panic!(
@@ -139,6 +149,51 @@ impl TestEnvironment {
                 panic!("There is no package with name {}", name.format())
             }
             Some(address) => address,
+        }
+    }
+
+    fn update_from_result<F: Formattable>(&mut self, result: &CommitResult, new_tracked_component: Option<F>) {
+
+        // Update tracked resources
+        for resource in result.new_resource_addresses() {
+
+            match self.test_engine.get_metadata(Address::Resource(resource.clone()), "name") {
+                None =>
+                    {
+                        println!("Could not find name for resource {:?}", resource.clone());
+                    }
+                Some(entry) =>
+                    {
+                        match entry {
+                            MetadataEntry::Value(value) =>
+                                {
+                                    match value {
+                                        MetadataValue::String(name) => {
+                                            match resource {
+                                                ResourceAddress::Fungible(_) => {
+                                                    self.fungibles.insert(name.format(), resource.clone());
+                                                }
+                                                ResourceAddress::NonFungible(_) => {
+                                                    self.non_fungibles.insert(name.format(), resource.clone());
+                                                }
+                                            }
+                                        }
+                                        _ => {
+                                            println!("Could not find name for resource {:?}", resource.clone());
+                                        }
+                                    }
+                                }
+                            MetadataEntry::List(_) => {
+                                println!("Could not find name for resource {:?}", resource.clone());
+                            }
+                        }
+                    }
+            };
+        }
+
+        // Update tracked components
+        if let(component_name) = new_tracked_component {
+            todo!()
         }
     }
 }

@@ -5,13 +5,16 @@ use radix_engine::ledger::*;
 use radix_engine::transaction::{execute_transaction, ExecutionConfig, FeeReserveConfig, TransactionReceipt, TransactionResult};
 use radix_engine::types::*;
 use radix_engine::wasm::{DefaultWasmEngine, WasmInstrumenter, WasmMeteringConfig};
+
 use radix_engine_interface::{dec, rule};
+use radix_engine_interface::api::component::ComponentStateSubstate;
 use radix_engine_interface::api::node_modules::auth::AuthAddresses;
 use radix_engine_interface::api::node_modules::metadata::MetadataEntry;
 use radix_engine_interface::api::types::{RENodeId, VaultOffset};
 use radix_engine_interface::blueprints::resource::*;
 use radix_engine_interface::constants::FAUCET_COMPONENT;
 use radix_engine_interface::math::Decimal;
+
 use transaction::builder::ManifestBuilder;
 use transaction::ecdsa_secp256k1::EcdsaSecp256k1PrivateKey;
 use transaction::model::{Executable, TestTransaction};
@@ -59,12 +62,13 @@ impl TestEngine {
         &mut self,
         manifest: TransactionManifest,
         initial_proofs: Vec<NonFungibleGlobalId>,
+        with_trace: bool
     ) -> TransactionReceipt {
 
         let transaction = TestTransaction::new(manifest, self.next_transaction_nonce(), u32::MAX);
         let executable = transaction.get_executable(initial_proofs);
         let fee_reserve_config = FeeReserveConfig::default();
-        let execution_config = ExecutionConfig::default();
+        let execution_config = ExecutionConfig::default().with_trace(with_trace);
 
         let transaction_receipt = self.execute_transaction(
             executable,
@@ -118,6 +122,23 @@ impl TestEngine {
             .map_or(Decimal::zero(), |vault_id| self.get_vault_balance(vault_id))
     }
 
+    pub fn get_component_state<T: ScryptoDecode>(
+        &self,
+        component_address: &ComponentAddress,
+    ) -> T {
+        let component_state: ComponentStateSubstate = self.sub_state_store
+            .get_substate(&SubstateId(
+                RENodeId::GlobalObject(Address::Component(component_address.clone())),
+                NodeModuleId::SELF,
+                SubstateOffset::Component(ComponentOffset::State0),
+            ))
+            .map(|s| s.substate.to_runtime())
+            .map(|s| s.into())
+            .unwrap();
+        let raw_state = IndexedScryptoValue::from_scrypto_value(component_state.0);
+        raw_state.as_typed::<T>().unwrap()
+    }
+
     pub fn get_metadata(&self, address: Address, key: &str) -> Option<MetadataEntry> {
         let metadata_entry = self
             .sub_state_store
@@ -152,7 +173,7 @@ impl TestEngine {
             ))))
             .build();
 
-        let receipt = self.execute_manifest(manifest, vec![]);
+        let receipt = self.execute_manifest(manifest, vec![], false);
         let account_component = receipt.expect_commit(true).new_component_addresses()[0];
 
         Account::new(private_key, public_key, account_component)
@@ -171,7 +192,7 @@ impl TestEngine {
             )
             .build();
 
-        let receipt = self.execute_manifest(manifest, vec![]);
+        let receipt = self.execute_manifest(manifest, vec![], false);
         receipt.expect_commit(true).new_package_addresses()[0]
     }
 
@@ -186,7 +207,7 @@ impl TestEngine {
             .publish_package_with_owner(code, schema, owner_badge)
             .build();
 
-        let receipt = self.execute_manifest(manifest, vec![]);
+        let receipt = self.execute_manifest(manifest, vec![], false);
         receipt.expect_commit(true).new_package_addresses()[0]
     }
 
@@ -249,7 +270,7 @@ impl TestEngine {
                 .lock_fee(FAUCET_COMPONENT, 10.into())
                 .create_validator(pub_key, rule!(require(non_fungible_id)))
                 .build();
-            let receipt = self.execute_manifest(manifest, vec![]);
+            let receipt = self.execute_manifest(manifest, vec![], false);
             receipt.expect_commit(true);
         }
     }

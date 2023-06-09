@@ -1,18 +1,24 @@
 use std::collections::HashMap;
 use std::path::Path;
-use radix_engine::log;
 
-use radix_engine::transaction::CommitResult;
-use radix_engine::types::{Address, PackageAddress, ResourceAddress};
+use radix_engine::transaction::{CommitResult, TransactionReceipt, TransactionResult};
+use radix_engine::types::{Address, ComponentAddress, dec, ManifestValue, PackageAddress, ResourceAddress, ScryptoDecode};
 use radix_engine_interface::api::node_modules::metadata::{MetadataEntry, MetadataValue};
+use transaction::builder::ManifestBuilder;
+use transaction::model::TransactionManifest;
 
 use crate::account::Account;
+use crate::blueprint::Blueprint;
 use crate::formattable::Formattable;
+use crate::method_calls::{MethodCallBuilder};
 use crate::test_engine::TestEngine;
 
 pub struct TestEnvironment {
     accounts: HashMap<String, Account>,
+    components: HashMap<String, ComponentAddress>,
     current_account: String,
+    current_component: Option<String>,
+    current_package: Option<String>,
     fungibles: HashMap<String, ResourceAddress>,
     non_fungibles: HashMap<String, ResourceAddress>,
     packages: HashMap<String, PackageAddress>,
@@ -30,7 +36,10 @@ impl TestEnvironment {
 
         Self {
             accounts: HashMap::new(),
+            components: HashMap::new(),
             current_account: "default".format(),
+            current_component: None,
+            current_package: None,
             fungibles: HashMap::new(),
             non_fungibles: HashMap::new(),
             packages: HashMap::new(),
@@ -38,12 +47,46 @@ impl TestEnvironment {
         }
     }
 
+    pub fn call_method(&mut self, method_name: &str, args: ManifestValue) -> MethodCallBuilder {
+        MethodCallBuilder::from(args, self.current_account().address(), self.current_component().clone(), method_name, &mut self)
+    }
+
+
     pub fn current_account(&self) -> &Account {
         self.accounts.get(&self.current_account).unwrap()
     }
 
-    pub fn set_current_account<F: Formattable>(&mut self, name: F) {
-        self.current_account = self.get_account(name);
+    pub fn current_component(&self) -> &ComponentAddress { self.components.get(self.current_component.as_ref().unwrap()).unwrap() }
+
+    pub fn current_component_sate<T: ScryptoDecode>(&self) -> T {
+        self.test_engine.get_component_state(self.current_component())
+    }
+
+    pub fn current_package(&self) -> &PackageAddress { self.packages.get(self.current_package.as_ref().unwrap()).unwrap() }
+
+    pub fn execute_call(&mut self, manifest: TransactionManifest, with_trace: bool) -> TransactionReceipt {
+        let receipt = self.test_engine.execute_manifest(manifest, vec![], with_trace);
+        if let TransactionResult::Commit(commit_result) = &receipt.result {
+            self.update_resources_from_result(commit_result);
+        }
+        receipt
+    }
+
+    pub fn exists_resource<F: Formattable>(&self, name: F) -> bool {
+        match self.fungibles.get(&name.format()) {
+            None => self.non_fungibles.contains_key(&name.format()),
+            Some(_) => true,
+        }
+    }
+
+    pub fn get_component_state<T: ScryptoDecode, F: Formattable>(&self, component_name: F) -> T {
+        let component_address = self.get_component(component_name);
+        self.test_engine.get_component_state(component_address)
+    }
+
+    pub fn get_current_account_address(&self) -> ComponentAddress
+    {
+        self.accounts.get(&self.current_account).unwrap().address()
     }
 
     /// Creates a new account with a given name.
@@ -63,6 +106,42 @@ impl TestEnvironment {
         }
     }
 
+    pub fn new_component<F: Formattable, B: Blueprint>(&mut self, component_name: F, blueprint: B, args: ManifestValue)
+    {
+        match self.components.get(&component_name.format())
+        {
+            Some(_) => {
+                panic!("A component with name {} already exists", component_name.format())
+            }
+            None => {
+                let package_address = self.current_package().clone();
+                let current_account = self.get_current_account_address();
+                let manifest = ManifestBuilder::new()
+                    .lock_fee(current_account, dec!(10))
+                    .call_function(package_address, blueprint.name(), blueprint.instantiation_name(), args)
+                    .build();
+
+                let receipt = self.test_engine.execute_manifest(manifest, vec![], false);
+
+                if let TransactionResult::Commit(commit) = receipt.result {
+                    let component: ComponentAddress = commit.output(1);
+                    self.components.insert(component_name.format(), component);
+
+                    let admin_badge_position = blueprint.admin_badge_type().return_position();
+                    if admin_badge_position > 0 {
+                        let admin_badge: ResourceAddress = commit.output(admin_badge_position);
+                        let admin_badge_name = format!("{}_admin_badge", component_name.format()).format();
+                        self.fungibles.insert(admin_badge_name, admin_badge);
+                    }
+
+                    if self.current_component.is_none() { self.current_component = Some(component_name.format()) };
+
+                    self.update_resources_from_result(&commit);
+                }
+            }
+        }
+    }
+
     /// Publishes a new package.
     ///
     /// # Arguments
@@ -76,7 +155,8 @@ impl TestEnvironment {
             }
             None => {
                 let new_package = self.test_engine.publish_package(path);
-                self.packages.insert(formatted_name, new_package);
+                self.packages.insert(formatted_name.clone(), new_package);
+                if self.current_package.is_none() { self.current_package = Some(formatted_name)}
             }
         }
     }
@@ -106,11 +186,8 @@ impl TestEnvironment {
         }
     }
 
-    pub fn exists_resource<F: Formattable>(&self, name: F) -> bool {
-        match self.fungibles.get(&name.format()) {
-            None => self.non_fungibles.contains_key(&name.format()),
-            Some(_) => true,
-        }
+    pub fn set_current_account<F: Formattable>(&mut self, name: F) {
+        self.current_account = self.get_account(name);
     }
 
     fn get_account<F: Formattable>(&self, name: F) -> String {
@@ -119,6 +196,15 @@ impl TestEnvironment {
                 panic!("There is no account with name {}", name.format())
             }
             Some(_) => name.format(),
+        }
+    }
+
+    fn get_component<F: Formattable>(&self, name: F) -> &ComponentAddress {
+        match self.components.get(&name.format()) {
+            None => {
+                panic!("There is no component with name {}", name.format())
+            }
+            Some(address) => address
         }
     }
 
@@ -152,7 +238,7 @@ impl TestEnvironment {
         }
     }
 
-    fn update_from_result<F: Formattable>(&mut self, result: &CommitResult, new_tracked_component: Option<F>) {
+    fn update_resources_from_result(&mut self, result: &CommitResult) {
 
         // Update tracked resources
         for resource in result.new_resource_addresses() {
@@ -189,11 +275,6 @@ impl TestEnvironment {
                         }
                     }
             };
-        }
-
-        // Update tracked components
-        if let(component_name) = new_tracked_component {
-            todo!()
         }
     }
 }

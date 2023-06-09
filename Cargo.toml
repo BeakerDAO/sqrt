@@ -1,6 +1,6 @@
 [package]
 name = "sqrt"
-version = "0.3.0"
+version = "0.4.0"
 edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -8,9 +8,7 @@ edition = "2021"
 [dependencies]
 radix-engine = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v0.9.0" }
 radix-engine-interface = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v0.9.0" }
-radix-engine-constants = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v0.9.0" }
 radix-engine-stores = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v0.9.0" }
-scrypto-unit = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v0.9.0" }
 transaction = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v0.9.0" }
 serde_json = { version = "1.0.81" }
 

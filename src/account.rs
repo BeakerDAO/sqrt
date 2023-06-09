@@ -23,14 +23,19 @@ impl Account {
         }
     }
 
+    pub fn address(&self) -> ComponentAddress
+    {
+        self.component_address.clone()
+    }
+
+    pub fn owner_badge(&self) -> NonFungibleGlobalId{
+        self.owner_badge.clone().expect("The account does not have an owner badge")
+    }
+
     pub fn set_owner_badge(&mut self, owner_badge: NonFungibleGlobalId) {
         match self.owner_badge {
             None => self.owner_badge = Some(owner_badge),
             Some(_) => panic!("The account already has an owner badge")
         }
-    }
-
-    pub fn owner_badge(&self) -> NonFungibleGlobalId{
-        self.owner_badge.clone().expect("The account does not have an owner badge")
     }
 }

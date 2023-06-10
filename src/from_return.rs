@@ -49,37 +49,43 @@ from_return_impl!(PreciseDecimal);
 
 
 macro_rules! from_return_tuple_impl {
-    ( $($type:ident)+ ) => {
+    ( $( $idx:tt $type:ident )+ ) => {
         impl<$($type: FromReturn),+> FromReturn for ($($type, )+) {
             fn from(instructions: Vec<InstructionOutput>) -> Self{
-                let mut i = 0;
                 (
                     $(
+                        match instructions.get($idx+1).clone().unwrap()
                         {
-                            let bytes = match instructions.get(i).clone().unwrap() {
                             InstructionOutput::None => { panic!("The method does not return anything") }
-                            InstructionOutput::CallReturn(bytes) => bytes
-                            };
-
-                            let elem = scrypto_decode::<$type>(&bytes).expect("Could not parse method return into given type");
-                            i = i+1;
-                            elem
+                            InstructionOutput::CallReturn(bytes) => {
+                                 scrypto_decode::<$type>(&bytes).expect("Could not parse method return into given type")
+                            }
                         }
-                    ),*
+
+                    ,)*
                 )
             }
         }
     }
 }
 
-from_return_tuple_impl!(A B);
-from_return_tuple_impl!(A B C);
-from_return_tuple_impl!(A B C D);
-from_return_tuple_impl!(A B C D E);
-from_return_tuple_impl!(A B C D E F);
-from_return_tuple_impl!(A B C D E F G);
-from_return_tuple_impl!(A B C D E F G H);
-from_return_tuple_impl!(A B C D E F G H I);
-from_return_tuple_impl!(A B C D E F G H I J);
-from_return_tuple_impl!(A B C D E F G H I J K);
-from_return_tuple_impl!(A B C D E F G H I J K L);
+from_return_tuple_impl! { 0 T0 }
+from_return_tuple_impl! { 0 T0 1 T1 }
+from_return_tuple_impl! { 0 T0 1 T1 2 T2 }
+from_return_tuple_impl! { 0 T0 1 T1 2 T2 3 T3 }
+from_return_tuple_impl! { 0 T0 1 T1 2 T2 3 T3 4 T4 }
+from_return_tuple_impl! { 0 T0 1 T1 2 T2 3 T3 4 T4 5 T5 }
+from_return_tuple_impl! { 0 T0 1 T1 2 T2 3 T3 4 T4 5 T5 6 T6 }
+from_return_tuple_impl! { 0 T0 1 T1 2 T2 3 T3 4 T4 5 T5 6 T6 7 T7 }
+from_return_tuple_impl! { 0 T0 1 T1 2 T2 3 T3 4 T4 5 T5 6 T6 7 T7 8 T8 }
+from_return_tuple_impl! { 0 T0 1 T1 2 T2 3 T3 4 T4 5 T5 6 T6 7 T7 8 T8 9 T9 }
+from_return_tuple_impl! { 0 T0 1 T1 2 T2 3 T3 4 T4 5 T5 6 T6 7 T7 8 T8 9 T9 10 T10 }
+from_return_tuple_impl! { 0 T0 1 T1 2 T2 3 T3 4 T4 5 T5 6 T6 7 T7 8 T8 9 T9 10 T10 11 T11 }
+from_return_tuple_impl! { 0 T0 1 T1 2 T2 3 T3 4 T4 5 T5 6 T6 7 T7 8 T8 9 T9 10 T10 11 T11 12 T12 }
+from_return_tuple_impl! { 0 T0 1 T1 2 T2 3 T3 4 T4 5 T5 6 T6 7 T7 8 T8 9 T9 10 T10 11 T11 12 T12 13 T13 }
+from_return_tuple_impl! { 0 T0 1 T1 2 T2 3 T3 4 T4 5 T5 6 T6 7 T7 8 T8 9 T9 10 T10 11 T11 12 T12 13 T13 14 T14 }
+from_return_tuple_impl! { 0 T0 1 T1 2 T2 3 T3 4 T4 5 T5 6 T6 7 T7 8 T8 9 T9 10 T10 11 T11 12 T12 13 T13 14 T14 15 T15 }
+from_return_tuple_impl! { 0 T0 1 T1 2 T2 3 T3 4 T4 5 T5 6 T6 7 T7 8 T8 9 T9 10 T10 11 T11 12 T12 13 T13 14 T14 15 T15 16 T16 }
+from_return_tuple_impl! { 0 T0 1 T1 2 T2 3 T3 4 T4 5 T5 6 T6 7 T7 8 T8 9 T9 10 T10 11 T11 12 T12 13 T13 14 T14 15 T15 16 T16 17 T17 }
+from_return_tuple_impl! { 0 T0 1 T1 2 T2 3 T3 4 T4 5 T5 6 T6 7 T7 8 T8 9 T9 10 T10 11 T11 12 T12 13 T13 14 T14 15 T15 16 T16 17 T17 18 T18 }
+from_return_tuple_impl! { 0 T0 1 T1 2 T2 3 T3 4 T4 5 T5 6 T6 7 T7 8 T8 9 T9 10 T10 11 T11 12 T12 13 T13 14 T14 15 T15 16 T16 17 T17 18 T18 19 T19 }

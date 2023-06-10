@@ -35,8 +35,4 @@ impl StateHashSupport {
         );
         self.current_version += 1;
     }
-
-    pub fn get_current(&self) -> Hash {
-        self.current_hash
-    }
 }

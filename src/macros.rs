@@ -12,5 +12,3 @@ macro_rules! call_args {
         Some(temp_vec)
     }};
 }
-
-

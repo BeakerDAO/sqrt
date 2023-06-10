@@ -1,21 +1,35 @@
-use radix_engine::types::{ManifestEncoder, Encoder};
-use radix_engine::types::{ComponentAddress, Decimal, Hash, NonFungibleGlobalId, NonFungibleLocalId, PackageAddress, PreciseDecimal, ResourceAddress};
-use transaction::builder::ManifestBuilder;
 use crate::test_environment::TestEnvironment;
+use radix_engine::types::{
+    ComponentAddress, Decimal, Hash, NonFungibleGlobalId, NonFungibleLocalId, PackageAddress,
+    PreciseDecimal, ResourceAddress,
+};
+use radix_engine::types::{Encoder, ManifestEncoder};
+use transaction::builder::ManifestBuilder;
 
 pub trait EnvironmentEncode {
-
-    fn encode(&self, test_environment: &TestEnvironment, manifest_builder: &mut ManifestBuilder, encoder: &mut ManifestEncoder, caller: ComponentAddress);
+    fn encode(
+        &self,
+        test_environment: &TestEnvironment,
+        manifest_builder: &mut ManifestBuilder,
+        encoder: &mut ManifestEncoder,
+        caller: ComponentAddress,
+    );
 }
 
 macro_rules! env_encode_impl {
     ($type:ident) => {
         impl EnvironmentEncode for $type {
-            fn encode(&self, _test_environment: &TestEnvironment, _manifest_builder: &mut ManifestBuilder, encoder: &mut ManifestEncoder, _caller: ComponentAddress) {
+            fn encode(
+                &self,
+                _test_environment: &TestEnvironment,
+                _manifest_builder: &mut ManifestBuilder,
+                encoder: &mut ManifestEncoder,
+                _caller: ComponentAddress,
+            ) {
                 encoder.encode(&self).unwrap();
             }
         }
-    }
+    };
 }
 
 env_encode_impl!(u8);

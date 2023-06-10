@@ -20,11 +20,10 @@ pub enum AdminBadge {
 }
 
 impl AdminBadge {
-
-   pub fn return_position(&self) -> usize {
-       match self {
-           AdminBadge::Internal(position) => position.clone(),
-           _ => 0
-       }
-   }
+    pub fn return_position(&self) -> usize {
+        match self {
+            AdminBadge::Internal(position) => position.clone(),
+            _ => 0,
+        }
+    }
 }

@@ -1,7 +1,7 @@
 use radix_engine::ledger::OutputId;
 use radix_engine::types::Hash;
-use radix_engine_stores::hash_tree::{put_at_next_version, SubstateHashChange};
 use radix_engine_stores::hash_tree::tree_store::{TypedInMemoryTreeStore, Version};
+use radix_engine_stores::hash_tree::{put_at_next_version, SubstateHashChange};
 
 pub struct StateHashSupport {
     tree_store: TypedInMemoryTreeStore,

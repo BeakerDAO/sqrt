@@ -1,30 +1,34 @@
-use radix_engine::types::{ComponentAddress, Decimal, Hash, NonFungibleGlobalId, NonFungibleLocalId, PackageAddress, PreciseDecimal, ResourceAddress};
+use radix_engine::types::{
+    ComponentAddress, Decimal, Hash, NonFungibleGlobalId, NonFungibleLocalId, PackageAddress,
+    PreciseDecimal, ResourceAddress,
+};
 use radix_engine_interface::blueprints::transaction_processor::InstructionOutput;
 use radix_engine_interface::data::scrypto::scrypto_decode;
 use radix_engine_interface::data::scrypto::ScryptoDecode;
 
 pub trait FromReturn: ScryptoDecode {
-
     fn from(instructions: Vec<InstructionOutput>) -> Self;
-
 }
 
 macro_rules! from_return_impl {
     ($type:ident) => {
         impl FromReturn for $type {
-            fn from(mut instructions: Vec<InstructionOutput>) -> Self{
+            fn from(mut instructions: Vec<InstructionOutput>) -> Self {
                 if instructions.len() != 1 {
                     panic!("Could not parse method return into given type")
                 }
 
                 let bytes = match instructions.pop().unwrap() {
-                    InstructionOutput::None => { panic!("The method does not return anything") }
-                    InstructionOutput::CallReturn(bytes) => bytes
+                    InstructionOutput::None => {
+                        panic!("The method does not return anything")
+                    }
+                    InstructionOutput::CallReturn(bytes) => bytes,
                 };
-                scrypto_decode::<$type>(&bytes).expect("Could not parse method return into given type")
+                scrypto_decode::<$type>(&bytes)
+                    .expect("Could not parse method return into given type")
             }
         }
-    }
+    };
 }
 
 from_return_impl!(u8);
@@ -46,7 +50,6 @@ from_return_impl!(NonFungibleLocalId);
 from_return_impl!(Hash);
 from_return_impl!(Decimal);
 from_return_impl!(PreciseDecimal);
-
 
 macro_rules! from_return_tuple_impl {
     ( $( $idx:tt $type:ident )+ ) => {

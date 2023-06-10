@@ -2,7 +2,9 @@ use std::collections::HashMap;
 use std::path::Path;
 
 use radix_engine::transaction::{CommitResult, TransactionReceipt, TransactionResult};
-use radix_engine::types::{Address, ComponentAddress, PackageAddress, ResourceAddress, ScryptoDecode};
+use radix_engine::types::{
+    Address, ComponentAddress, PackageAddress, ResourceAddress, ScryptoDecode,
+};
 use radix_engine_interface::api::node_modules::metadata::{MetadataEntry, MetadataValue};
 use transaction::model::TransactionManifest;
 
@@ -26,7 +28,6 @@ pub struct TestEnvironment {
 }
 
 impl TestEnvironment {
-
     /// Returns a new test environment with default configuration.
     pub fn new() -> Self {
         let mut test_engine = TestEngine::new();
@@ -47,27 +48,45 @@ impl TestEnvironment {
         }
     }
 
-    pub fn call_method(&mut self, method_name: &str, args: Vec<Box<dyn EnvironmentEncode>>) -> CallBuilder {
+    pub fn call_method(
+        &mut self,
+        method_name: &str,
+        args: Vec<Box<dyn EnvironmentEncode>>,
+    ) -> CallBuilder {
         let current_account = self.current_account().address();
         let current_component = self.current_component().clone();
-        CallBuilder::from(self)
-            .call_method(current_account, current_component, method_name, args)
+        CallBuilder::from(self).call_method(current_account, current_component, method_name, args)
     }
 
     pub fn current_account(&self) -> &Account {
         self.accounts.get(&self.current_account).unwrap()
     }
 
-    pub fn current_component(&self) -> &ComponentAddress { self.components.get(self.current_component.as_ref().unwrap()).unwrap() }
-
-    pub fn current_component_sate<T: ScryptoDecode>(&self) -> T {
-        self.test_engine.get_component_state(self.current_component())
+    pub fn current_component(&self) -> &ComponentAddress {
+        self.components
+            .get(self.current_component.as_ref().unwrap())
+            .unwrap()
     }
 
-    pub fn current_package(&self) -> &PackageAddress { self.packages.get(self.current_package.as_ref().unwrap()).unwrap() }
+    pub fn current_component_sate<T: ScryptoDecode>(&self) -> T {
+        self.test_engine
+            .get_component_state(self.current_component())
+    }
 
-    pub fn execute_call(&mut self, manifest: TransactionManifest, with_trace: bool) -> TransactionReceipt {
-        let receipt = self.test_engine.execute_manifest(manifest, vec![], with_trace);
+    pub fn current_package(&self) -> &PackageAddress {
+        self.packages
+            .get(self.current_package.as_ref().unwrap())
+            .unwrap()
+    }
+
+    pub fn execute_call(
+        &mut self,
+        manifest: TransactionManifest,
+        with_trace: bool,
+    ) -> TransactionReceipt {
+        let receipt = self
+            .test_engine
+            .execute_manifest(manifest, vec![], with_trace);
         if let TransactionResult::Commit(commit_result) = &receipt.result {
             self.update_resources_from_result(commit_result);
         }
@@ -86,8 +105,7 @@ impl TestEnvironment {
         self.test_engine.get_component_state(&component_address)
     }
 
-    pub fn get_current_account_address(&self) -> ComponentAddress
-    {
+    pub fn get_current_account_address(&self) -> ComponentAddress {
         self.accounts.get(&self.current_account).unwrap().address()
     }
 
@@ -108,12 +126,18 @@ impl TestEnvironment {
         }
     }
 
-    pub fn new_component<F: Formattable, B: Blueprint>(&mut self, component_name: F, blueprint: B, args: Vec<Box<dyn EnvironmentEncode>>)
-    {
-        match self.components.get(&component_name.format())
-        {
+    pub fn new_component<F: Formattable, B: Blueprint>(
+        &mut self,
+        component_name: F,
+        blueprint: B,
+        args: Vec<Box<dyn EnvironmentEncode>>,
+    ) {
+        match self.components.get(&component_name.format()) {
             Some(_) => {
-                panic!("A component with name {} already exists", component_name.format())
+                panic!(
+                    "A component with name {} already exists",
+                    component_name.format()
+                )
             }
             None => {
                 let package_address = self.current_package().clone();
@@ -121,7 +145,13 @@ impl TestEnvironment {
                 let call_receipt = CallBuilder::from(self)
                     .with_trace(true)
                     .faucet_pays_fees()
-                    .call_function(current_account, package_address, blueprint.name(), blueprint.instantiation_name(), args)
+                    .call_function(
+                        current_account,
+                        package_address,
+                        blueprint.name(),
+                        blueprint.instantiation_name(),
+                        args,
+                    )
                     .run();
 
                 let receipt = call_receipt.receipt();
@@ -133,11 +163,14 @@ impl TestEnvironment {
                     let admin_badge_position = blueprint.admin_badge_type().return_position();
                     if admin_badge_position > 0 {
                         let admin_badge: ResourceAddress = commit.output(admin_badge_position);
-                        let admin_badge_name = format!("{}_admin_badge", component_name.format()).format();
+                        let admin_badge_name =
+                            format!("{}_admin_badge", component_name.format()).format();
                         self.fungibles.insert(admin_badge_name, admin_badge);
                     }
 
-                    if self.current_component.is_none() { self.current_component = Some(component_name.format()) };
+                    if self.current_component.is_none() {
+                        self.current_component = Some(component_name.format())
+                    };
 
                     self.update_resources_from_result(&commit);
                 }
@@ -159,7 +192,9 @@ impl TestEnvironment {
             None => {
                 let new_package = self.test_engine.publish_package(path);
                 self.packages.insert(formatted_name.clone(), new_package);
-                if self.current_package.is_none() { self.current_package = Some(formatted_name)}
+                if self.current_package.is_none() {
+                    self.current_package = Some(formatted_name)
+                }
             }
         }
     }
@@ -170,11 +205,7 @@ impl TestEnvironment {
     /// * `name` - name associated to the account.
     /// * `path` - path to the directory of the package.
     /// * `owner_badge` - name of the non-fungible resource to use as owner badge.
-    pub fn new_package_with_owner<F: Formattable, P: AsRef<Path>>(
-        &mut self,
-        name: F,
-        path: P,
-    ) {
+    pub fn new_package_with_owner<F: Formattable, P: AsRef<Path>>(&mut self, name: F, path: P) {
         let formatted_name = name.format();
         match self.packages.get(&formatted_name) {
             Some(_) => {
@@ -218,7 +249,7 @@ impl TestEnvironment {
             None => {
                 panic!("There is no component with name {}", name.format())
             }
-            Some(address) => address.clone()
+            Some(address) => address.clone(),
         }
     }
 
@@ -227,7 +258,7 @@ impl TestEnvironment {
             None => {
                 panic!("There is no fungible resource with name {}", name.format())
             }
-            Some(address) => address.clone()
+            Some(address) => address.clone(),
         }
     }
 
@@ -239,7 +270,7 @@ impl TestEnvironment {
                     name.format()
                 )
             }
-            Some(address) => address.clone()
+            Some(address) => address.clone(),
         }
     }
 
@@ -253,41 +284,33 @@ impl TestEnvironment {
     }
 
     fn update_resources_from_result(&mut self, result: &CommitResult) {
-
         // Update tracked resources
         for resource in result.new_resource_addresses() {
-
-            match self.test_engine.get_metadata(Address::Resource(resource.clone()), "name") {
-                None =>
-                    {
+            match self
+                .test_engine
+                .get_metadata(Address::Resource(resource.clone()), "name")
+            {
+                None => {
+                    println!("Could not find name for resource {:?}", resource.clone());
+                }
+                Some(entry) => match entry {
+                    MetadataEntry::Value(value) => match value {
+                        MetadataValue::String(name) => match resource {
+                            ResourceAddress::Fungible(_) => {
+                                self.fungibles.insert(name.format(), resource.clone());
+                            }
+                            ResourceAddress::NonFungible(_) => {
+                                self.non_fungibles.insert(name.format(), resource.clone());
+                            }
+                        },
+                        _ => {
+                            println!("Could not find name for resource {:?}", resource.clone());
+                        }
+                    },
+                    MetadataEntry::List(_) => {
                         println!("Could not find name for resource {:?}", resource.clone());
                     }
-                Some(entry) =>
-                    {
-                        match entry {
-                            MetadataEntry::Value(value) =>
-                                {
-                                    match value {
-                                        MetadataValue::String(name) => {
-                                            match resource {
-                                                ResourceAddress::Fungible(_) => {
-                                                    self.fungibles.insert(name.format(), resource.clone());
-                                                }
-                                                ResourceAddress::NonFungible(_) => {
-                                                    self.non_fungibles.insert(name.format(), resource.clone());
-                                                }
-                                            }
-                                        }
-                                        _ => {
-                                            println!("Could not find name for resource {:?}", resource.clone());
-                                        }
-                                    }
-                                }
-                            MetadataEntry::List(_) => {
-                                println!("Could not find name for resource {:?}", resource.clone());
-                            }
-                        }
-                    }
+                },
             };
         }
     }

@@ -2,15 +2,15 @@ use std::collections::HashMap;
 use std::path::Path;
 
 use radix_engine::transaction::{CommitResult, TransactionReceipt, TransactionResult};
-use radix_engine::types::{Address, ComponentAddress, dec, ManifestValue, PackageAddress, ResourceAddress, ScryptoDecode};
+use radix_engine::types::{Address, ComponentAddress, PackageAddress, ResourceAddress, ScryptoDecode};
 use radix_engine_interface::api::node_modules::metadata::{MetadataEntry, MetadataValue};
-use transaction::builder::ManifestBuilder;
 use transaction::model::TransactionManifest;
 
 use crate::account::Account;
 use crate::blueprint::Blueprint;
+use crate::calls::CallBuilder;
+use crate::environment_encoder::EnvironmentEncode;
 use crate::formattable::Formattable;
-use crate::method_calls::{MethodCallBuilder};
 use crate::test_engine::TestEngine;
 
 pub struct TestEnvironment {
@@ -35,7 +35,7 @@ impl TestEnvironment {
         accounts.insert(String::from("default".format()), default_account);
 
         Self {
-            accounts: HashMap::new(),
+            accounts,
             components: HashMap::new(),
             current_account: "default".format(),
             current_component: None,
@@ -47,10 +47,12 @@ impl TestEnvironment {
         }
     }
 
-    pub fn call_method(&mut self, method_name: &str, args: ManifestValue) -> MethodCallBuilder {
-        MethodCallBuilder::from(args, self.current_account().address(), self.current_component().clone(), method_name, &mut self)
+    pub fn call_method(&mut self, method_name: &str, args: Vec<Box<dyn EnvironmentEncode>>) -> CallBuilder {
+        let current_account = self.current_account().address();
+        let current_component = self.current_component().clone();
+        CallBuilder::from(self)
+            .call_method(current_account, current_component, method_name, args)
     }
-
 
     pub fn current_account(&self) -> &Account {
         self.accounts.get(&self.current_account).unwrap()
@@ -81,7 +83,7 @@ impl TestEnvironment {
 
     pub fn get_component_state<T: ScryptoDecode, F: Formattable>(&self, component_name: F) -> T {
         let component_address = self.get_component(component_name);
-        self.test_engine.get_component_state(component_address)
+        self.test_engine.get_component_state(&component_address)
     }
 
     pub fn get_current_account_address(&self) -> ComponentAddress
@@ -106,7 +108,7 @@ impl TestEnvironment {
         }
     }
 
-    pub fn new_component<F: Formattable, B: Blueprint>(&mut self, component_name: F, blueprint: B, args: ManifestValue)
+    pub fn new_component<F: Formattable, B: Blueprint>(&mut self, component_name: F, blueprint: B, args: Vec<Box<dyn EnvironmentEncode>>)
     {
         match self.components.get(&component_name.format())
         {
@@ -116,12 +118,13 @@ impl TestEnvironment {
             None => {
                 let package_address = self.current_package().clone();
                 let current_account = self.get_current_account_address();
-                let manifest = ManifestBuilder::new()
-                    .lock_fee(current_account, dec!(10))
-                    .call_function(package_address, blueprint.name(), blueprint.instantiation_name(), args)
-                    .build();
+                let call_receipt = CallBuilder::from(self)
+                    .with_trace(true)
+                    .faucet_pays_fees()
+                    .call_function(current_account, package_address, blueprint.name(), blueprint.instantiation_name(), args)
+                    .run();
 
-                let receipt = self.test_engine.execute_manifest(manifest, vec![], false);
+                let receipt = call_receipt.receipt();
 
                 if let TransactionResult::Commit(commit) = receipt.result {
                     let component: ComponentAddress = commit.output(1);
@@ -186,38 +189,49 @@ impl TestEnvironment {
         }
     }
 
-    pub fn set_current_account<F: Formattable>(&mut self, name: F) {
-        self.current_account = self.get_account(name);
+    pub fn set_current_account<F: Formattable + Clone>(&mut self, name: F) {
+        self.get_account(name.clone());
+        self.current_account = name.format();
     }
 
-    fn get_account<F: Formattable>(&self, name: F) -> String {
+    pub fn set_current_component<F: Formattable + Clone>(&mut self, name: F) {
+        self.get_component(name.clone());
+        self.current_component = Some(name.format());
+    }
+
+    pub fn set_current_package<F: Formattable + Clone>(&mut self, name: F) {
+        self.get_package(name.clone());
+        self.current_package = Some(name.format());
+    }
+
+    pub fn get_account<F: Formattable>(&self, name: F) -> ComponentAddress {
         match self.accounts.get(&name.format()) {
             None => {
                 panic!("There is no account with name {}", name.format())
             }
-            Some(_) => name.format(),
+            Some(account) => account.address(),
         }
     }
 
-    fn get_component<F: Formattable>(&self, name: F) -> &ComponentAddress {
+    pub fn get_component<F: Formattable>(&self, name: F) -> ComponentAddress {
         match self.components.get(&name.format()) {
             None => {
                 panic!("There is no component with name {}", name.format())
             }
-            Some(address) => address
+            Some(address) => address.clone()
         }
     }
 
-    fn get_fungible<F: Formattable>(&self, name: F) -> &ResourceAddress {
+    pub fn get_fungible<F: Formattable>(&self, name: F) -> ResourceAddress {
         match self.fungibles.get(&name.format()) {
             None => {
                 panic!("There is no fungible resource with name {}", name.format())
             }
-            Some(address) => address,
+            Some(address) => address.clone()
         }
     }
 
-    fn get_non_fungible<F: Formattable>(&self, name: F) -> &ResourceAddress {
+    pub fn get_non_fungible<F: Formattable>(&self, name: F) -> ResourceAddress {
         match self.non_fungibles.get(&name.format()) {
             None => {
                 panic!(
@@ -225,16 +239,16 @@ impl TestEnvironment {
                     name.format()
                 )
             }
-            Some(address) => address,
+            Some(address) => address.clone()
         }
     }
 
-    fn get_package<F: Formattable>(&self, name: F) -> &PackageAddress {
+    pub fn get_package<F: Formattable>(&self, name: F) -> PackageAddress {
         match self.packages.get(&name.format()) {
             None => {
                 panic!("There is no package with name {}", name.format())
             }
-            Some(address) => address,
+            Some(address) => address.clone(),
         }
     }
 

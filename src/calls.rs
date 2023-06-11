@@ -4,7 +4,6 @@ use radix_engine::types::{
     ManifestValueKind, PackageAddress, MANIFEST_SBOR_V1_MAX_DEPTH, MANIFEST_SBOR_V1_PAYLOAD_PREFIX,
 };
 use radix_engine_interface::constants::FAUCET_COMPONENT;
-use radix_engine_interface::data::scrypto::ScryptoDecode;
 use transaction::builder::ManifestBuilder;
 use transaction::model::TransactionManifest;
 
@@ -66,31 +65,13 @@ impl<'a> CallBuilder<'a> {
         self
     }
 
-    pub fn run(mut self) -> MethodCallReceipt<()> {
+    pub fn run(mut self) -> MethodCallReceipt {
         self.build();
         let receipt = self
             .test_environment
             .execute_call(self.manifest.clone().unwrap(), self.with_trace.clone());
         let (fee_paid, outcome) = get_outcome_and_fees(&receipt);
-        MethodCallReceipt::from(fee_paid, None, outcome, receipt)
-    }
-
-    pub fn run_with_return<T: ScryptoDecode + FromReturn>(mut self) -> MethodCallReceipt<T> {
-        self.build();
-        let receipt = self
-            .test_environment
-            .execute_call(self.manifest.clone().unwrap(), self.with_trace.clone());
-        let (fee_paid, outcome) = get_outcome_and_fees(&receipt);
-
-        let method_return: Option<T> = match receipt.clone().result {
-            TransactionResult::Commit(commit) => match commit.outcome {
-                TransactionOutcome::Success(commit_success) => Some(T::from(commit_success)),
-                TransactionOutcome::Failure(_) => None,
-            },
-            _ => None,
-        };
-
-        MethodCallReceipt::from(fee_paid, method_return, outcome, receipt)
+        MethodCallReceipt::from(fee_paid, outcome, receipt)
     }
 
     pub fn with_trace(mut self, trace: bool) -> Self {
@@ -187,23 +168,16 @@ impl<'a> CallBuilder<'a> {
     }
 }
 
-pub struct MethodCallReceipt<T: ScryptoDecode> {
+pub struct MethodCallReceipt {
     fee_paid: Option<Decimal>,
-    method_return: Option<T>,
     outcome: Outcome,
     receipt: TransactionReceipt,
 }
 
-impl<T: ScryptoDecode> MethodCallReceipt<T> {
-    pub fn from(
-        fee_paid: Option<Decimal>,
-        method_return: Option<T>,
-        outcome: Outcome,
-        receipt: TransactionReceipt,
-    ) -> Self {
+impl MethodCallReceipt {
+    pub fn from(fee_paid: Option<Decimal>, outcome: Outcome, receipt: TransactionReceipt) -> Self {
         Self {
             fee_paid,
-            method_return,
             outcome,
             receipt,
         }
@@ -213,8 +187,14 @@ impl<T: ScryptoDecode> MethodCallReceipt<T> {
         self.fee_paid.clone().unwrap()
     }
 
-    pub fn get_return(&self) -> &T {
-        self.method_return.as_ref().unwrap()
+    pub fn get_return<T: FromReturn>(&self) -> Option<T> {
+        match self.receipt().result {
+            TransactionResult::Commit(commit) => match commit.outcome {
+                TransactionOutcome::Success(commit_success) => Some(T::from(commit_success)),
+                TransactionOutcome::Failure(_) => None,
+            },
+            _ => None,
+        }
     }
 
     pub fn receipt(&self) -> TransactionReceipt {

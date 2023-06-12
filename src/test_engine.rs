@@ -1,17 +1,19 @@
+use std::collections::BTreeMap;
 use std::path::Path;
 
 use radix_engine::kernel::interpreters::ScryptoInterpreter;
-use radix_engine::ledger::*;
+use radix_engine::ledger::{create_genesis, ReadableSubstateStore, StateTreeTraverser, TypedInMemorySubstateStore, VaultFinder};
 use radix_engine::transaction::{
     execute_transaction, ExecutionConfig, FeeReserveConfig, TransactionReceipt, TransactionResult,
 };
-use radix_engine::types::*;
+use radix_engine::types::{Address, ComponentAddress, count, EcdsaSecp256k1PublicKey, Encoder, manifest_decode, ManifestEncoder, ManifestExpression, MANIFEST_SBOR_V1_MAX_DEPTH, MANIFEST_SBOR_V1_PAYLOAD_PREFIX, ManifestValueKind, PackageAddress, ResourceAddress, scrypto_decode, scrypto_encode, ScryptoDecode, ScryptoValue};
+
 use radix_engine::wasm::{DefaultWasmEngine, WasmInstrumenter, WasmMeteringConfig};
 
 use radix_engine_interface::api::component::ComponentStateSubstate;
 use radix_engine_interface::api::node_modules::auth::AuthAddresses;
 use radix_engine_interface::api::node_modules::metadata::MetadataEntry;
-use radix_engine_interface::api::types::{RENodeId, VaultOffset};
+use radix_engine_interface::api::types::{ComponentOffset, IndexedScryptoValue, KeyValueStoreOffset, NodeModuleId, ObjectId, RENodeId, SubstateId, SubstateOffset, VaultOffset};
 use radix_engine_interface::blueprints::resource::*;
 use radix_engine_interface::constants::FAUCET_COMPONENT;
 use radix_engine_interface::math::Decimal;
@@ -24,13 +26,12 @@ use transaction::model::{Executable, TestTransaction};
 
 use crate::account::Account;
 use crate::compiler::compile;
-use crate::state_hash::StateHashSupport;
+use crate::manifest_args;
 
 pub struct TestEngine {
     next_private_key: u64,
     next_transaction_nonce: u64,
     scrypto_interpreter: ScryptoInterpreter<DefaultWasmEngine>,
-    state_hash_support: StateHashSupport,
     sub_state_store: TypedInMemorySubstateStore,
 }
 
@@ -44,7 +45,6 @@ impl TestEngine {
                 wasm_engine: DefaultWasmEngine::default(),
                 wasm_instrumenter: WasmInstrumenter::default(),
             },
-            state_hash_support: StateHashSupport::new(),
             sub_state_store: TypedInMemorySubstateStore::new(),
         };
 
@@ -92,7 +92,9 @@ impl TestEngine {
 
         if let TransactionResult::Commit(commit) = &receipt.result {
             let commit_receipt = commit.state_updates.commit(&mut self.sub_state_store);
-            self.state_hash_support.update_with(commit_receipt.outputs);
+            /*println!("commit_receipt:\
+                      \n\tinputs: {:?},\
+                      \n\toutputs: {:?}", commit_receipt.inputs, commit_receipt.outputs);*/
         };
 
         receipt
@@ -166,9 +168,23 @@ impl TestEngine {
                 &public_key
             ))))
             .build();
-
         let receipt = self.execute_manifest(manifest, vec![], false);
         let account_component = receipt.expect_commit(true).new_component_addresses()[0];
+
+        println!("Sending free tokens to account: {}", account_component.to_hex());
+        let manifest = ManifestBuilder::new()
+            .lock_fee(FAUCET_COMPONENT, dec!(100))
+            .call_method(FAUCET_COMPONENT, "free", manifest_args!())
+            .call_method(
+                account_component.clone(),
+                "deposit_batch",
+                manifest_args!(ManifestExpression::EntireWorktop),
+            )
+            .build();
+
+        let new_receipt = self.execute_manifest(manifest, vec![], false);
+        new_receipt.expect_commit_success();
+
 
         Account::new(private_key, public_key, account_component)
     }

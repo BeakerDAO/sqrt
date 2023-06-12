@@ -1,8 +1,5 @@
 use radix_engine::transaction::{TransactionOutcome, TransactionReceipt, TransactionResult};
-use radix_engine::types::{
-    count, dec, manifest_decode, ComponentAddress, Decimal, Encoder, ManifestEncoder,
-    ManifestValueKind, PackageAddress, MANIFEST_SBOR_V1_MAX_DEPTH, MANIFEST_SBOR_V1_PAYLOAD_PREFIX,
-};
+use radix_engine::types::{count, dec, manifest_decode, ComponentAddress, Decimal, Encoder, ManifestEncoder, ManifestValueKind, PackageAddress, MANIFEST_SBOR_V1_MAX_DEPTH, MANIFEST_SBOR_V1_PAYLOAD_PREFIX, ManifestExpression};
 use radix_engine_interface::constants::FAUCET_COMPONENT;
 use transaction::builder::ManifestBuilder;
 use transaction::model::TransactionManifest;
@@ -37,19 +34,21 @@ impl Outcome {
 }
 
 pub struct CallBuilder<'a> {
+    caller: ComponentAddress,
     manifest: Option<TransactionManifest>,
     fee_locked: Decimal,
-    fee_payer: Option<ComponentAddress>,
+    fee_payer: ComponentAddress,
     test_environment: &'a mut TestEnvironment,
     with_trace: bool,
 }
 
 impl<'a> CallBuilder<'a> {
-    pub fn from(test_env: &'a mut TestEnvironment) -> Self {
+    pub fn from(test_env: &'a mut TestEnvironment, caller: ComponentAddress) -> Self {
         Self {
+            caller: caller.clone() ,
             manifest: None,
             fee_locked: dec!(10),
-            fee_payer: None,
+            fee_payer: caller,
             test_environment: test_env,
             with_trace: false,
         }
@@ -61,7 +60,7 @@ impl<'a> CallBuilder<'a> {
     }
 
     pub fn faucet_pays_fees(mut self) -> Self {
-        self.fee_payer = Some(FAUCET_COMPONENT);
+        self.fee_payer = FAUCET_COMPONENT;
         self
     }
 
@@ -81,27 +80,36 @@ impl<'a> CallBuilder<'a> {
 
     fn build(&mut self) {
         self.lock_fee();
+        self.deposit_batch();
     }
 
     fn lock_fee(&mut self) {
         self.manifest.as_mut().unwrap().instructions.insert(
             0,
             transaction::model::Instruction::CallMethod {
-                component_address: self.fee_payer.unwrap(),
+                component_address: self.fee_payer,
                 method_name: "lock_fee".to_string(),
                 args: manifest_args!(self.fee_locked),
             },
         );
     }
 
+    fn deposit_batch(&mut self) {
+        self.manifest.as_mut().unwrap().instructions.push(
+            transaction::model::Instruction::CallMethod {
+                component_address: self.caller.clone(),
+                method_name: "deposit_batch".to_string(),
+                args: manifest_args!(ManifestExpression::EntireWorktop)
+            }
+        );
+    }
+
     pub(crate) fn call_method(
         mut self,
-        caller: ComponentAddress,
         component: ComponentAddress,
         method_name: &str,
         args: Vec<Box<dyn EnvironmentEncode>>,
     ) -> Self {
-        self.fee_payer = Some(caller.clone());
 
         let mut manifest = ManifestBuilder::new();
 
@@ -117,7 +125,7 @@ impl<'a> CallBuilder<'a> {
                 &mut self.test_environment,
                 &mut manifest,
                 &mut encoder,
-                caller.clone(),
+                self.caller.clone(),
             );
         }
 
@@ -132,14 +140,11 @@ impl<'a> CallBuilder<'a> {
 
     pub(crate) fn call_function(
         mut self,
-        caller: ComponentAddress,
         package_address: PackageAddress,
         blueprint_name: &str,
         function_name: &str,
         args: Vec<Box<dyn EnvironmentEncode>>,
     ) -> Self {
-        self.fee_payer = Some(caller.clone());
-
         let mut manifest = ManifestBuilder::new();
 
         let mut buf = Vec::new();
@@ -154,7 +159,7 @@ impl<'a> CallBuilder<'a> {
                 &mut self.test_environment,
                 &mut manifest,
                 &mut encoder,
-                caller.clone(),
+                self.caller.clone(),
             );
         }
 

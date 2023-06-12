@@ -7,7 +7,6 @@ pub mod environment_encoder;
 mod formattable;
 pub mod from_return;
 pub mod macros;
-mod state_hash;
 mod test_engine;
 pub mod test_environment;
 mod tmp_manifest_macro;

@@ -2,10 +2,10 @@ use std::collections::HashMap;
 use std::path::Path;
 
 use radix_engine::transaction::{CommitResult, TransactionReceipt, TransactionResult};
-use radix_engine::types::{
-    Address, ComponentAddress, PackageAddress, ResourceAddress, ScryptoDecode,
-};
+use radix_engine::types::{Address, ComponentAddress, count, dec, Encoder, manifest_decode, ManifestEncoder, ManifestExpression, MANIFEST_SBOR_V1_MAX_DEPTH, MANIFEST_SBOR_V1_PAYLOAD_PREFIX, ManifestValueKind, PackageAddress, ResourceAddress, ScryptoDecode};
 use radix_engine_interface::api::node_modules::metadata::{MetadataEntry, MetadataValue};
+use radix_engine_interface::constants::FAUCET_COMPONENT;
+use transaction::builder::ManifestBuilder;
 use transaction::model::TransactionManifest;
 
 use crate::account::Account;
@@ -13,6 +13,7 @@ use crate::blueprint::Blueprint;
 use crate::calls::CallBuilder;
 use crate::environment_encoder::EnvironmentEncode;
 use crate::formattable::Formattable;
+use crate::manifest_args;
 use crate::test_engine::TestEngine;
 
 pub struct TestEnvironment {
@@ -55,7 +56,7 @@ impl TestEnvironment {
     ) -> CallBuilder {
         let current_account = self.current_account().address();
         let current_component = self.current_component().clone();
-        CallBuilder::from(self).call_method(current_account, current_component, method_name, args)
+        CallBuilder::from(self, current_account).call_method(current_component, method_name, args)
     }
 
     pub fn current_account(&self) -> &Account {
@@ -142,7 +143,7 @@ impl TestEnvironment {
             None => {
                 let package_address = self.current_package().clone();
                 let current_account = self.get_current_account_address();
-                let call_receipt = CallBuilder::from(self)
+                /*let call_receipt = CallBuilder::from(self)
                     .with_trace(true)
                     .faucet_pays_fees()
                     .call_function(
@@ -152,9 +153,14 @@ impl TestEnvironment {
                         blueprint.instantiation_name(),
                         args,
                     )
-                    .run();
+                    .run();*/
+                let manifest = ManifestBuilder::new()
+                    .lock_fee(FAUCET_COMPONENT, dec!(100))
+                    .call_function(package_address, blueprint.name(), blueprint.instantiation_name(), manifest_args!())
+                    .call_method(current_account, "deposit", manifest_args!(ManifestExpression::EntireWorktop))
+                    .build();
 
-                let receipt = call_receipt.receipt();
+                let receipt = self.test_engine.execute_manifest(manifest, vec![], true);
 
                 if let TransactionResult::Commit(commit) = receipt.result {
                     let component: ComponentAddress = commit.output(1);
